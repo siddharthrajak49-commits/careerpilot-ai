@@ -1,5 +1,6 @@
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from resume_parser import extract_resume_text
 from skill_matcher import detect_skills
@@ -11,7 +12,7 @@ from auth import hash_password, verify_password, create_token
 
 app = FastAPI()
 
-# CORS
+# ---------------- CORS ----------------
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,22 +21,29 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Home
+# ---------------- MODELS ----------------
+class SignupData(BaseModel):
+    name: str
+    email: str
+    password: str
+
+class LoginData(BaseModel):
+    email: str
+    password: str
+
+# ---------------- HOME ----------------
 @app.get("/")
 def home():
     return {"message": "CareerPilot AI Backend Running"}
 
-
-# -------------------------
-# SIGNUP
-# -------------------------
+# ---------------- SIGNUP ----------------
 @app.post("/signup")
-def signup(data: dict):
+def signup(data: SignupData):
 
     db = SessionLocal()
 
     existing = db.query(User).filter(
-        User.email == data["email"]
+        User.email == data.email
     ).first()
 
     if existing:
@@ -46,9 +54,9 @@ def signup(data: dict):
         )
 
     new_user = User(
-        name=data["name"],
-        email=data["email"],
-        password=hash_password(data["password"])
+        name=data.name,
+        email=data.email,
+        password=hash_password(data.password)
     )
 
     db.add(new_user)
@@ -57,17 +65,14 @@ def signup(data: dict):
 
     return {"message": "Signup Successful"}
 
-
-# -------------------------
-# LOGIN
-# -------------------------
+# ---------------- LOGIN ----------------
 @app.post("/login")
-def login(data: dict):
+def login(data: LoginData):
 
     db = SessionLocal()
 
     user = db.query(User).filter(
-        User.email == data["email"]
+        User.email == data.email
     ).first()
 
     db.close()
@@ -79,7 +84,7 @@ def login(data: dict):
         )
 
     if not verify_password(
-        data["password"],
+        data.password,
         user.password
     ):
         raise HTTPException(
@@ -97,10 +102,7 @@ def login(data: dict):
         "user": user.email
     }
 
-
-# -------------------------
-# RESUME ANALYSIS
-# -------------------------
+# ---------------- ANALYZE ----------------
 @app.post("/analyze")
 async def analyze_resume(
     file: UploadFile = File(...)
@@ -139,7 +141,6 @@ async def analyze_resume(
         "Why should we hire you?"
     ]
 
-    # Save report
     db = SessionLocal()
 
     new_report = Report(
