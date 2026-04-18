@@ -13,19 +13,31 @@ function Signup() {
     try {
       await axios.post(
         "https://careerpilot-backend-rvv1.onrender.com/signup",
-        { name, email, password }
+        {
+          name,
+          email,
+          password
+        }
       );
 
       alert("Signup Successful");
       navigate("/");
+
     } catch (error) {
-      alert("Email already exists");
+      console.log(error);
+
+      if (error.response) {
+        alert(error.response.data.detail);
+      } else {
+        alert("Server Error");
+      }
     }
   };
 
   return (
     <div className="container">
       <div className="card">
+
         <h1>📝 Signup</h1>
 
         <input
@@ -46,11 +58,17 @@ function Signup() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button onClick={signupUser}>Create Account</button>
+        <button onClick={signupUser}>
+          Create Account
+        </button>
 
         <p>
-          Already User? <Link to="/">Login</Link>
+          Already User?{" "}
+          <Link to="/">
+            Login
+          </Link>
         </p>
+
       </div>
     </div>
   );
