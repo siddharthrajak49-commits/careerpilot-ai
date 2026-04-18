@@ -6,7 +6,7 @@ SECRET_KEY = "careerpilot-secret-key"
 ALGORITHM = "HS256"
 
 pwd_context = CryptContext(
-    schemes=["bcrypt"],
+    schemes=["pbkdf2_sha256"],
     deprecated="auto"
 )
 
@@ -25,5 +25,4 @@ def create_token(data: dict):
         SECRET_KEY,
         algorithm=ALGORITHM
     )
-
     return token
