@@ -1,0 +1,7 @@
+node_modules/
+__pycache__/
+*.pyc
+.DS_Store
+careerpilot-ai/backend/temp.pdf
+careerpilot-ai/backend/careerpilot.db
+frontend/build/
