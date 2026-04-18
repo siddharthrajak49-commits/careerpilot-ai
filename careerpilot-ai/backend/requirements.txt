@@ -6,3 +6,4 @@ python-docx
 sqlalchemy
 python-jose
 passlib[bcrypt]
+pandas
