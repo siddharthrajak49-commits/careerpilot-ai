@@ -12,7 +12,7 @@ function Signup() {
   const signupUser = async () => {
     try {
       await axios.post(
-        "http://127.0.0.1:8000/signup",
+        "https://careerpilot-backend-rvv1.onrender.com/signup",
         {
           name,
           email,
