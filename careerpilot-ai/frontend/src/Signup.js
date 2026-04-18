@@ -2,29 +2,41 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 
-function Signup() {
-  const navigate = useNavigate();
+function Login() {
 
-  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const signupUser = async () => {
+  const navigate = useNavigate();
+
+  const loginUser = async () => {
+
     try {
-      await axios.post(
-        "https://careerpilot-backend-rvv1.onrender.com/signup",
+
+      const res = await axios.post(
+        "https://careerpilot-backend-rvv1.onrender.com/login",
         {
-          name,
-          email,
-          password
+          email: email,
+          password: password
         }
       );
 
-      alert("Signup Success");
-      navigate("/");
+      localStorage.setItem(
+        "token",
+        res.data.token
+      );
+
+      localStorage.setItem(
+        "user",
+        res.data.user
+      );
+
+      alert("Login Successful");
+
+      navigate("/dashboard");
 
     } catch (error) {
-      alert("Email already exists");
+      alert("Invalid Login");
     }
   };
 
@@ -32,32 +44,33 @@ function Signup() {
     <div className="container">
       <div className="card">
 
-        <h1>📝 Signup</h1>
-
-        <input
-          type="text"
-          placeholder="Name"
-          onChange={(e) => setName(e.target.value)}
-        />
+        <h1>🔐 Login</h1>
 
         <input
           type="text"
           placeholder="Email"
-          onChange={(e) => setEmail(e.target.value)}
+          onChange={(e) =>
+            setEmail(e.target.value)
+          }
         />
 
         <input
           type="password"
           placeholder="Password"
-          onChange={(e) => setPassword(e.target.value)}
+          onChange={(e) =>
+            setPassword(e.target.value)
+          }
         />
 
-        <button onClick={signupUser}>
-          Create Account
+        <button onClick={loginUser}>
+          Login
         </button>
 
         <p>
-          Already user? <Link to="/">Login</Link>
+          New User?{" "}
+          <Link to="/signup">
+            Signup
+          </Link>
         </p>
 
       </div>
@@ -65,4 +78,4 @@ function Signup() {
   );
 }
 
-export default Signup;
+export default Login;
