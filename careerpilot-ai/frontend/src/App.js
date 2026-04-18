@@ -43,7 +43,7 @@ function App() {
     formData.append("file", file);
 
     const res = await axios.post(
-      "http://127.0.0.1:8000/analyze",
+      "https://careerpilot-backend-rvv1.onrender.com/analyze",
       formData
     );
 
