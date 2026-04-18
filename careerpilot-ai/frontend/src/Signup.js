@@ -3,40 +3,28 @@ import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 
 function Signup() {
+  const navigate = useNavigate();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const navigate = useNavigate();
-
-  const loginUser = async () => {
-
+  const signupUser = async () => {
     try {
-
-      const res = await axios.post(
-        "https://careerpilot-backend-rvv1.onrender.com/login",
+      await axios.post(
+        "https://careerpilot-backend-rvv1.onrender.com/signup",
         {
-          email: email,
-          password: password
+          name,
+          email,
+          password
         }
       );
 
-      localStorage.setItem(
-        "token",
-        res.data.token
-      );
-
-      localStorage.setItem(
-        "user",
-        res.data.user
-      );
-
-      alert("Login Successful");
-
-      navigate("/dashboard");
+      alert("Signup Successful");
+      navigate("/");
 
     } catch (error) {
-      alert("Invalid Login");
+      alert("Email already exists");
     }
   };
 
@@ -44,32 +32,34 @@ function Signup() {
     <div className="container">
       <div className="card">
 
-        <h1>🔐 Login</h1>
+        <h1>📝 Signup</h1>
+
+        <input
+          type="text"
+          placeholder="Name"
+          onChange={(e) => setName(e.target.value)}
+        />
 
         <input
           type="text"
           placeholder="Email"
-          onChange={(e) =>
-            setEmail(e.target.value)
-          }
+          onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
           type="password"
           placeholder="Password"
-          onChange={(e) =>
-            setPassword(e.target.value)
-          }
+          onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button onClick={loginUser}>
-          Login
+        <button onClick={signupUser}>
+          Create Account
         </button>
 
         <p>
-          New User?{" "}
-          <Link to="/signup">
-            Signup
+          Already User?{" "}
+          <Link to="/">
+            Login
           </Link>
         </p>
 
@@ -78,4 +68,4 @@ function Signup() {
   );
 }
 
-export default Login;
+export default Signup;
