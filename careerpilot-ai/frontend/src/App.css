@@ -1,43 +1,120 @@
-body {
+* {
   margin: 0;
-  font-family: Arial;
-  background: linear-gradient(135deg,#0f2027,#203a43,#2c5364);
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: Arial, sans-serif;
+  background: linear-gradient(135deg, #071b2d, #0c3247, #114d63);
+  min-height: 100vh;
+  color: white;
 }
 
 .container {
+  min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 100vh;
+  padding: 20px;
 }
 
 .card {
+  width: 100%;
+  max-width: 520px;
   background: rgba(255,255,255,0.08);
-  padding: 40px;
-  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.12);
+  backdrop-filter: blur(18px);
+  border-radius: 24px;
+  padding: 35px;
+  box-shadow: 0 0 30px rgba(0,0,0,0.25);
+}
+
+h1 {
+  text-align: center;
+  font-size: 32px;
+  margin-bottom: 25px;
   color: white;
-  width: 500px;
-  backdrop-filter: blur(15px);
-  box-shadow: 0 0 30px rgba(0,0,0,0.3);
+}
+
+h2 {
+  margin-top: 25px;
+  margin-bottom: 12px;
+  color: #39ff88;
+}
+
+input {
+  width: 100%;
+  padding: 14px;
+  margin-top: 14px;
+  border: none;
+  outline: none;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.10);
+  color: white;
+  font-size: 16px;
+}
+
+input::placeholder {
+  color: rgba(255,255,255,0.7);
 }
 
 button {
   width: 100%;
-  padding: 12px;
-  margin-top: 15px;
-  background: #00ff99;
+  margin-top: 18px;
+  padding: 14px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
+  background: #39ff88;
+  color: #071b2d;
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
+  transition: 0.3s;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 18px rgba(57,255,136,0.5);
+}
+
+p {
+  margin-top: 18px;
+  text-align: center;
+}
+
+a {
+  color: #39ff88;
+  text-decoration: none;
+  font-weight: bold;
 }
 
 .result {
-  margin-top: 25px;
-  background: rgba(255,255,255,0.08);
-  padding: 20px;
-  border-radius: 15px;
+  margin-top: 22px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(255,255,255,0.07);
 }
+
+ul {
+  margin-top: 10px;
+  padding-left: 20px;
+}
+
+li {
+  margin-top: 8px;
+}
+
 canvas {
   margin-top: 20px;
+}
+
+@media (max-width: 600px) {
+  .card {
+    padding: 22px;
+  }
+
+  h1 {
+    font-size: 26px;
+  }
 }
