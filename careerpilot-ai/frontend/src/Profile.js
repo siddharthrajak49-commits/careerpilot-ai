@@ -8,8 +8,7 @@ import React, {
 import Swal from "sweetalert2";
 
 import {
-  useNavigate,
-  Link
+  useNavigate
 } from "react-router-dom";
 
 import Navbar from "./Navbar";
@@ -30,6 +29,15 @@ function Profile() {
   const [email, setEmail] =
     useState("");
 
+  const [phone, setPhone] =
+    useState("");
+
+  const [city, setCity] =
+    useState("");
+
+  const [bio, setBio] =
+    useState("");
+
   const [editing, setEditing] =
     useState(false);
 
@@ -39,30 +47,20 @@ function Profile() {
   const [resumeCount, setResumeCount] =
     useState(0);
 
+  const [profileViews, setProfileViews] =
+    useState(128);
+
   const [plan, setPlan] =
     useState("Premium");
+
+  const [avatar, setAvatar] =
+    useState("");
 
   /* =========================
      LOAD DATA
   ========================= */
 
   useEffect(() => {
-
-    const savedName =
-      localStorage.getItem(
-        "user"
-      ) || "User";
-
-    const savedEmail =
-      localStorage.getItem(
-        "email"
-      ) || "user@email.com";
-
-    const savedDate =
-      localStorage.getItem(
-        "joinedDate"
-      ) ||
-      new Date().toLocaleDateString();
 
     const history =
       JSON.parse(
@@ -71,9 +69,55 @@ function Profile() {
         )
       ) || [];
 
-    setName(savedName);
-    setEmail(savedEmail);
-    setJoinedDate(savedDate);
+    setName(
+      localStorage.getItem(
+        "user"
+      ) || "User"
+    );
+
+    setEmail(
+      localStorage.getItem(
+        "email"
+      ) || "user@email.com"
+    );
+
+    setPhone(
+      localStorage.getItem(
+        "phone"
+      ) || ""
+    );
+
+    setCity(
+      localStorage.getItem(
+        "city"
+      ) || ""
+    );
+
+    setBio(
+      localStorage.getItem(
+        "bio"
+      ) || "Building my dream career with CareerPilot."
+    );
+
+    setJoinedDate(
+      localStorage.getItem(
+        "joinedDate"
+      ) ||
+      new Date().toLocaleDateString()
+    );
+
+    setPlan(
+      localStorage.getItem(
+        "plan"
+      ) || "Premium"
+    );
+
+    setAvatar(
+      localStorage.getItem(
+        "avatar"
+      ) || ""
+    );
+
     setResumeCount(
       history.length
     );
@@ -87,15 +131,11 @@ function Profile() {
   const saveProfile = () => {
 
     if (!name || !email) {
-
       Swal.fire({
         icon: "warning",
-        title:
-          "Missing Fields",
-        text:
-          "Please fill all fields."
+        title: "Missing Fields",
+        text: "Name and Email required."
       });
-
       return;
     }
 
@@ -109,17 +149,104 @@ function Profile() {
       email
     );
 
+    localStorage.setItem(
+      "phone",
+      phone
+    );
+
+    localStorage.setItem(
+      "city",
+      city
+    );
+
+    localStorage.setItem(
+      "bio",
+      bio
+    );
+
+    localStorage.setItem(
+      "plan",
+      plan
+    );
+
     Swal.fire({
       icon: "success",
-      title:
-        "Profile Updated",
-      text:
-        "Your profile saved successfully.",
+      title: "Profile Updated",
+      text: "Saved successfully.",
       timer: 1500,
       showConfirmButton: false
     });
 
     setEditing(false);
+
+  };
+
+  /* =========================
+     AVATAR UPLOAD
+  ========================= */
+
+  const handleAvatar = (e) => {
+
+    const file =
+      e.target.files[0];
+
+    if (!file) return;
+
+    const reader =
+      new FileReader();
+
+    reader.onloadend = () => {
+
+      setAvatar(
+        reader.result
+      );
+
+      localStorage.setItem(
+        "avatar",
+        reader.result
+      );
+    };
+
+    reader.readAsDataURL(file);
+  };
+
+  /* =========================
+     PASSWORD
+  ========================= */
+
+  const changePassword = () => {
+
+    Swal.fire({
+      title: "Change Password",
+      html:
+        `<input id="newPass" class="swal2-input" placeholder="New Password" type="password">`,
+      confirmButtonText:
+        "Update",
+      preConfirm: () => {
+        const pass =
+          document.getElementById(
+            "newPass"
+          ).value;
+
+        if (!pass) {
+          Swal.showValidationMessage(
+            "Enter password"
+          );
+        }
+
+        return pass;
+      }
+    }).then((res) => {
+
+      if (res.isConfirmed) {
+        Swal.fire(
+          "Updated",
+          "Password changed successfully.",
+          "success"
+        );
+      }
+
+    });
 
   };
 
@@ -167,7 +294,7 @@ function Profile() {
             <div className="heroLeft">
 
               <span className="heroTag">
-                👤 My Profile
+                👤 Profile Center
               </span>
 
               <h2 className="heroTitle">
@@ -175,9 +302,8 @@ function Profile() {
               </h2>
 
               <p className="heroText">
-                Manage your account,
-                settings and career
-                progress here.
+                Manage account, privacy,
+                membership and career growth.
               </p>
 
             </div>
@@ -188,13 +314,9 @@ function Profile() {
 
                 <span>⭐</span>
 
-                <h3>
-                  {plan}
-                </h3>
+                <h3>{plan}</h3>
 
-                <p>
-                  Membership
-                </p>
+                <p>Membership</p>
 
               </div>
 
@@ -202,128 +324,144 @@ function Profile() {
 
           </div>
 
-          {/* MAIN CARD */}
+          {/* MAIN */}
 
           <div className="card">
 
             <h1>
-              👤 Profile Center
+              👤 My Profile
             </h1>
 
             <p className="subtitle">
-              Manage your CareerPilot
-              account details.
+              Full future-ready profile dashboard.
             </p>
 
             {/* AVATAR */}
 
             <div
               style={{
-                width: "90px",
-                height: "90px",
-                margin:
-                  "0 auto 20px",
-                borderRadius:
-                  "50%",
-                background:
-                  "#eef9ef",
-                color:
-                  "#2f9e44",
-                display: "flex",
-                justifyContent:
-                  "center",
-                alignItems:
-                  "center",
-                fontSize:
-                  "36px",
-                fontWeight:
-                  "900"
+                textAlign: "center"
               }}
-              className="pulse"
             >
-              {firstLetter}
+
+              {avatar ? (
+                <img
+                  src={avatar}
+                  alt="avatar"
+                  style={{
+                    width: "95px",
+                    height: "95px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    margin: "0 auto"
+                  }}
+                />
+              ) : (
+                <div
+                  className="pulse"
+                  style={{
+                    width: "95px",
+                    height: "95px",
+                    borderRadius: "50%",
+                    background: "#eef9ef",
+                    color: "#2f9e44",
+                    fontSize: "38px",
+                    fontWeight: "900",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    margin: "0 auto"
+                  }}
+                >
+                  {firstLetter}
+                </div>
+              )}
+
+              <input
+                type="file"
+                onChange={handleAvatar}
+              />
+
             </div>
 
             {/* FORM */}
 
             {editing ? (
               <>
-
                 <input
-                  type="text"
-                  placeholder="Full Name"
                   value={name}
                   onChange={(e) =>
                     setName(
                       e.target.value
                     )
                   }
+                  placeholder="Full Name"
                 />
 
                 <input
-                  type="email"
-                  placeholder="Email"
                   value={email}
                   onChange={(e) =>
                     setEmail(
                       e.target.value
                     )
                   }
+                  placeholder="Email"
+                />
+
+                <input
+                  value={phone}
+                  onChange={(e) =>
+                    setPhone(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Phone"
+                />
+
+                <input
+                  value={city}
+                  onChange={(e) =>
+                    setCity(
+                      e.target.value
+                    )
+                  }
+                  placeholder="City"
+                />
+
+                <textarea
+                  value={bio}
+                  onChange={(e) =>
+                    setBio(
+                      e.target.value
+                    )
+                  }
+                  placeholder="Bio"
                 />
 
                 <button
-                  onClick={
-                    saveProfile
-                  }
+                  onClick={saveProfile}
                 >
                   Save Profile
                 </button>
-
               </>
             ) : (
               <div className="result">
 
-                <h2
-                  style={{
-                    marginTop: 0
-                  }}
-                >
+                <h2 style={{marginTop:0}}>
                   Account Details
                 </h2>
 
-                <p>
-                  <strong>
-                    Name:
-                  </strong>{" "}
-                  {name}
-                </p>
-
-                <p>
-                  <strong>
-                    Email:
-                  </strong>{" "}
-                  {email}
-                </p>
-
-                <p>
-                  <strong>
-                    Joined:
-                  </strong>{" "}
-                  {joinedDate}
-                </p>
-
-                <p>
-                  <strong>
-                    Plan:
-                  </strong>{" "}
-                  {plan}
-                </p>
+                <p><strong>Name:</strong> {name}</p>
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Phone:</strong> {phone || "N/A"}</p>
+                <p><strong>City:</strong> {city || "N/A"}</p>
+                <p><strong>Joined:</strong> {joinedDate}</p>
+                <p><strong>Plan:</strong> {plan}</p>
+                <p><strong>Bio:</strong> {bio}</p>
 
                 <button
                   onClick={() =>
-                    setEditing(
-                      true
-                    )
+                    setEditing(true)
                   }
                 >
                   Edit Profile
@@ -337,59 +475,27 @@ function Profile() {
             <div className="statsGrid">
 
               <div className="statCard">
-
                 <span>📄</span>
-
-                <h3>
-                  {resumeCount}
-                </h3>
-
-                <p>
-                  Reports Created
-                </p>
-
+                <h3>{resumeCount}</h3>
+                <p>Reports</p>
               </div>
 
               <div className="statCard">
-
-                <span>🚀</span>
-
-                <h3>
-                  Active
-                </h3>
-
-                <p>
-                  Account Status
-                </p>
-
+                <span>👀</span>
+                <h3>{profileViews}</h3>
+                <p>Views</p>
               </div>
 
               <div className="statCard">
-
                 <span>⭐</span>
-
-                <h3>
-                  Premium
-                </h3>
-
-                <p>
-                  Membership
-                </p>
-
+                <h3>{plan}</h3>
+                <p>Plan</p>
               </div>
 
               <div className="statCard">
-
-                <span>🎯</span>
-
-                <h3>
-                  Growth
-                </h3>
-
-                <p>
-                  Career Journey
-                </p>
-
+                <span>🚀</span>
+                <h3>Active</h3>
+                <p>Status</p>
               </div>
 
             </div>
@@ -409,14 +515,17 @@ function Profile() {
               </button>
 
               <button
+                onClick={changePassword}
+              >
+                Change Password
+              </button>
+
+              <button
                 onClick={logout}
                 style={{
-                  background:
-                    "#ffffff",
-                  border:
-                    "1px solid #e6efe6",
-                  color:
-                    "#173221"
+                  background:"#fff",
+                  color:"#173221",
+                  border:"1px solid #e6efe6"
                 }}
               >
                 Logout
@@ -428,18 +537,13 @@ function Profile() {
 
             <p
               style={{
-                textAlign:
-                  "center",
-                marginTop:
-                  "18px",
-                color:
-                  "#94a398",
-                fontSize:
-                  "13px"
+                textAlign:"center",
+                marginTop:"18px",
+                color:"#94a398",
+                fontSize:"13px"
               }}
             >
-              CareerPilot AI •
-              Smart Career Growth
+              CareerPilot AI • Smart Career Growth
             </p>
 
           </div>
