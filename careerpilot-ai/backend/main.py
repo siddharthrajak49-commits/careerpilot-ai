@@ -31,10 +31,12 @@ class LoginData(BaseModel):
     email: str
     password: str
 
+
 # ---------------- HOME ----------------
 @app.get("/")
 def home():
     return {"message": "CareerPilot AI Backend Running"}
+
 
 # ---------------- SIGNUP ----------------
 @app.post("/signup")
@@ -63,7 +65,10 @@ def signup(data: SignupData):
     db.commit()
     db.close()
 
-    return {"message": "Signup Successful"}
+    return {
+        "message": "Signup Successful"
+    }
+
 
 # ---------------- LOGIN ----------------
 @app.post("/login")
@@ -102,6 +107,7 @@ def login(data: LoginData):
         "user": user.email
     }
 
+
 # ---------------- ANALYZE ----------------
 @app.post("/analyze")
 async def analyze_resume(
@@ -116,11 +122,14 @@ async def analyze_resume(
 
     salary = predict_salary(skills)
 
-    ats_score = len(skills) * 10
+    ats_score = min(
+        len(skills) * 10,
+        100
+    )
 
     tips = [
         "Add measurable achievements",
-        "Use action words",
+        "Use action verbs",
         "Keep resume one page",
         "Add GitHub & LinkedIn",
         "Use ATS friendly format"
@@ -161,4 +170,56 @@ async def analyze_resume(
         "tips": tips,
         "missing_skills": missing_skills,
         "interview_questions": questions
+    }
+
+
+# ---------------- IMPROVE RESUME ----------------
+@app.post("/improve-resume")
+async def improve_resume(
+    file: UploadFile = File(...)
+):
+
+    text = await extract_resume_text(file)
+
+    improved_lines = []
+
+    for line in text.split("\n"):
+
+        clean = line.strip()
+
+        if clean:
+
+            improved_lines.append(
+                f"• Led and improved {clean}"
+            )
+
+    if len(improved_lines) == 0:
+
+        improved_lines = [
+            "• Built impactful projects using modern technologies",
+            "• Improved performance and delivered results",
+            "• Collaborated with teams successfully",
+            "• Used problem solving and analytical thinking"
+        ]
+
+    summary = """
+Professional candidate with strong technical skills,
+project experience, problem solving mindset and
+career growth potential. Optimized for ATS systems.
+"""
+
+    return {
+        "message": "Resume Improved Successfully",
+        "improved_text": "\n".join(
+            improved_lines[:8]
+        ),
+        "summary": summary,
+        "keywords_added": [
+            "Leadership",
+            "Problem Solving",
+            "Teamwork",
+            "Python",
+            "React",
+            "Communication"
+        ]
     }
