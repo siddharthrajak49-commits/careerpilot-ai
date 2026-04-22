@@ -374,22 +374,53 @@ function Dashboard() {
 
     /* ================= IMPROVE RESUME ================= */
 
-    const improveResume = () => {
+    const improveResume = async () => {
 
-        Swal.fire({
-            icon: "success",
-            title:
-                "AI Resume Rewrite Ready",
-            html:
-                `
-        <div style="text-align:left">
-        <p>• Added action verbs</p>
-        <p>• Improved bullet points</p>
-        <p>• ATS keywords inserted</p>
-        <p>• Stronger summary generated</p>
-        </div>
-        `
-        });
+        if (!file) {
+            Swal.fire({
+                icon: "warning",
+                title: "Upload Resume First",
+                text: "Please upload your resume."
+            });
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+
+            setLoading(true);
+
+            const response = await axios.post(
+                "https://careerpilot-backend-rvv1.onrender.com/improve-resume",
+                formData
+            );
+
+            Swal.fire({
+                icon: "success",
+                title: "AI Resume Improved",
+                html: `
+            <div style="text-align:left">
+              <p>${response.data.improved_text}</p>
+            </div>
+            `,
+                width: 700
+            });
+
+        } catch {
+
+            Swal.fire({
+                icon: "error",
+                title: "Feature Coming Soon",
+                text: "Backend improve API not connected yet."
+            });
+
+        } finally {
+
+            setLoading(false);
+
+        }
     };
 
     /* ================= COMPARE ATS ================= */
