@@ -1,9 +1,12 @@
+// Login.js
+
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 
 function Login() {
   const navigate = useNavigate();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -11,7 +14,10 @@ function Login() {
     try {
       const res = await axios.post(
         "https://careerpilot-backend-rvv1.onrender.com/login",
-        { email, password }
+        {
+          email,
+          password
+        }
       );
 
       localStorage.setItem("token", res.data.token);
@@ -19,6 +25,7 @@ function Login() {
 
       alert("Login Successful");
       navigate("/dashboard");
+
     } catch (error) {
       alert("Invalid Login");
     }
@@ -27,25 +34,32 @@ function Login() {
   return (
     <div className="container">
       <div className="card">
-        <h1>🔐 Login</h1>
+
+        <h1>🚀 CareerPilot AI</h1>
 
         <input
-          type="text"
-          placeholder="Email"
+          type="email"
+          placeholder="Enter Email"
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Enter Password"
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        <button onClick={loginUser}>Login</button>
+        <button onClick={loginUser}>
+          Login Now
+        </button>
 
         <p>
-          New User? <Link to="/signup">Signup</Link>
+          New User?{" "}
+          <Link to="/signup">
+            Create Account
+          </Link>
         </p>
+
       </div>
     </div>
   );

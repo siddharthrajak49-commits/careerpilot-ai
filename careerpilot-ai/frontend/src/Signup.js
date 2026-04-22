@@ -1,3 +1,5 @@
+// Signup.js
+
 import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
@@ -38,28 +40,28 @@ function Signup() {
     <div className="container">
       <div className="card">
 
-        <h1>📝 Signup</h1>
+        <h1>✨ Create Account</h1>
 
         <input
           type="text"
-          placeholder="Name"
+          placeholder="Enter Full Name"
           onChange={(e) => setName(e.target.value)}
         />
 
         <input
-          type="text"
-          placeholder="Email"
+          type="email"
+          placeholder="Enter Email"
           onChange={(e) => setEmail(e.target.value)}
         />
 
         <input
           type="password"
-          placeholder="Password"
+          placeholder="Create Password"
           onChange={(e) => setPassword(e.target.value)}
         />
 
         <button onClick={signupUser}>
-          Create Account
+          Signup Now
         </button>
 
         <p>
