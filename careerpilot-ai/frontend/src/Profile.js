@@ -6,10 +6,7 @@ import React, {
 } from "react";
 
 import Swal from "sweetalert2";
-
-import {
-  useNavigate
-} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 import Navbar from "./Navbar";
 import "./App.css";
@@ -47,7 +44,7 @@ function Profile() {
   const [resumeCount, setResumeCount] =
     useState(0);
 
-  const [profileViews, setProfileViews] =
+  const [profileViews] =
     useState(128);
 
   const [plan, setPlan] =
@@ -96,7 +93,8 @@ function Profile() {
     setBio(
       localStorage.getItem(
         "bio"
-      ) || "Building my dream career with CareerPilot."
+      ) ||
+      "Building my dream career with CareerPilot."
     );
 
     setJoinedDate(
@@ -131,11 +129,15 @@ function Profile() {
   const saveProfile = () => {
 
     if (!name || !email) {
+
       Swal.fire({
         icon: "warning",
-        title: "Missing Fields",
-        text: "Name and Email required."
+        title:
+          "Missing Fields",
+        text:
+          "Name and Email required."
       });
+
       return;
     }
 
@@ -171,8 +173,10 @@ function Profile() {
 
     Swal.fire({
       icon: "success",
-      title: "Profile Updated",
-      text: "Saved successfully.",
+      title:
+        "Profile Updated",
+      text:
+        "Saved successfully.",
       timer: 1500,
       showConfirmButton: false
     });
@@ -205,45 +209,64 @@ function Profile() {
         "avatar",
         reader.result
       );
+
     };
 
     reader.readAsDataURL(file);
+
   };
 
   /* =========================
-     PASSWORD
+     CHANGE PASSWORD
   ========================= */
 
   const changePassword = () => {
 
     Swal.fire({
-      title: "Change Password",
+      title:
+        "Change Password",
+
       html:
-        `<input id="newPass" class="swal2-input" placeholder="New Password" type="password">`,
+        `<input 
+          id="newPass" 
+          class="swal2-input" 
+          type="password" 
+          placeholder="New Password"
+        />`,
+
       confirmButtonText:
         "Update",
+
       preConfirm: () => {
+
         const pass =
           document.getElementById(
             "newPass"
           ).value;
 
         if (!pass) {
+
           Swal.showValidationMessage(
             "Enter password"
           );
+
         }
 
         return pass;
+
       }
+
     }).then((res) => {
 
       if (res.isConfirmed) {
-        Swal.fire(
-          "Updated",
-          "Password changed successfully.",
-          "success"
-        );
+
+        Swal.fire({
+          icon: "success",
+          title: "Updated",
+          text:
+            "Password changed successfully."
+        });
+
       }
 
     });
@@ -274,6 +297,7 @@ function Profile() {
   ========================= */
 
   return (
+
     <div className="mainAppTheme">
 
       <div className="container dashboardWrap">
@@ -302,8 +326,9 @@ function Profile() {
               </h2>
 
               <p className="heroText">
-                Manage account, privacy,
-                membership and career growth.
+                Manage account,
+                privacy, membership
+                and growth here.
               </p>
 
             </div>
@@ -324,7 +349,7 @@ function Profile() {
 
           </div>
 
-          {/* MAIN */}
+          {/* MAIN CARD */}
 
           <div className="card">
 
@@ -333,61 +358,83 @@ function Profile() {
             </h1>
 
             <p className="subtitle">
-              Full future-ready profile dashboard.
+              Full future-ready
+              profile dashboard.
             </p>
 
             {/* AVATAR */}
 
             <div
               style={{
-                textAlign: "center"
+                textAlign:
+                  "center"
               }}
             >
 
               {avatar ? (
+
                 <img
                   src={avatar}
                   alt="avatar"
                   style={{
                     width: "95px",
                     height: "95px",
-                    borderRadius: "50%",
-                    objectFit: "cover",
-                    margin: "0 auto"
+                    borderRadius:
+                      "50%",
+                    objectFit:
+                      "cover",
+                    margin:
+                      "0 auto"
                   }}
                 />
+
               ) : (
+
                 <div
                   className="pulse"
                   style={{
                     width: "95px",
                     height: "95px",
-                    borderRadius: "50%",
-                    background: "#eef9ef",
-                    color: "#2f9e44",
-                    fontSize: "38px",
-                    fontWeight: "900",
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    margin: "0 auto"
+                    borderRadius:
+                      "50%",
+                    background:
+                      "#eef9ef",
+                    color:
+                      "#2f9e44",
+                    fontSize:
+                      "38px",
+                    fontWeight:
+                      "900",
+                    display:
+                      "flex",
+                    justifyContent:
+                      "center",
+                    alignItems:
+                      "center",
+                    margin:
+                      "0 auto"
                   }}
                 >
                   {firstLetter}
                 </div>
+
               )}
 
               <input
                 type="file"
-                onChange={handleAvatar}
+                onChange={
+                  handleAvatar
+                }
               />
 
             </div>
 
-            {/* FORM */}
+            {/* FORM / DETAILS */}
 
             {editing ? (
+
               <>
+
                 <input
                   value={name}
                   onChange={(e) =>
@@ -439,35 +486,74 @@ function Profile() {
                 />
 
                 <button
-                  onClick={saveProfile}
+                  onClick={
+                    saveProfile
+                  }
                 >
                   Save Profile
                 </button>
+
               </>
+
             ) : (
+
               <div className="result">
 
-                <h2 style={{marginTop:0}}>
+                <h2
+                  style={{
+                    marginTop: 0
+                  }}
+                >
                   Account Details
                 </h2>
 
-                <p><strong>Name:</strong> {name}</p>
-                <p><strong>Email:</strong> {email}</p>
-                <p><strong>Phone:</strong> {phone || "N/A"}</p>
-                <p><strong>City:</strong> {city || "N/A"}</p>
-                <p><strong>Joined:</strong> {joinedDate}</p>
-                <p><strong>Plan:</strong> {plan}</p>
-                <p><strong>Bio:</strong> {bio}</p>
+                <p>
+                  <strong>Name:</strong>{" "}
+                  {name}
+                </p>
+
+                <p>
+                  <strong>Email:</strong>{" "}
+                  {email}
+                </p>
+
+                <p>
+                  <strong>Phone:</strong>{" "}
+                  {phone || "N/A"}
+                </p>
+
+                <p>
+                  <strong>City:</strong>{" "}
+                  {city || "N/A"}
+                </p>
+
+                <p>
+                  <strong>Joined:</strong>{" "}
+                  {joinedDate}
+                </p>
+
+                <p>
+                  <strong>Plan:</strong>{" "}
+                  {plan}
+                </p>
+
+                <p>
+                  <strong>Bio:</strong>{" "}
+                  {bio}
+                </p>
 
                 <button
                   onClick={() =>
-                    setEditing(true)
+                    setEditing(
+                      true
+                    )
                   }
                 >
                   Edit Profile
                 </button>
 
               </div>
+
             )}
 
             {/* STATS */}
@@ -515,7 +601,9 @@ function Profile() {
               </button>
 
               <button
-                onClick={changePassword}
+                onClick={
+                  changePassword
+                }
               >
                 Change Password
               </button>
@@ -523,9 +611,12 @@ function Profile() {
               <button
                 onClick={logout}
                 style={{
-                  background:"#fff",
-                  color:"#173221",
-                  border:"1px solid #e6efe6"
+                  background:
+                    "#ffffff",
+                  color:
+                    "#173221",
+                  border:
+                    "1px solid #e6efe6"
                 }}
               >
                 Logout
@@ -537,13 +628,18 @@ function Profile() {
 
             <p
               style={{
-                textAlign:"center",
-                marginTop:"18px",
-                color:"#94a398",
-                fontSize:"13px"
+                textAlign:
+                  "center",
+                marginTop:
+                  "18px",
+                color:
+                  "#94a398",
+                fontSize:
+                  "13px"
               }}
             >
-              CareerPilot AI • Smart Career Growth
+              CareerPilot AI •
+              Smart Career Growth
             </p>
 
           </div>
@@ -553,6 +649,7 @@ function Profile() {
       </div>
 
     </div>
+
   );
 }
 
