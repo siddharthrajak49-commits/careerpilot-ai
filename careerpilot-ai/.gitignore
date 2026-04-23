@@ -4,4 +4,5 @@ __pycache__/
 .DS_Store
 careerpilot-ai/backend/temp.pdf
 careerpilot-ai/backend/careerpilot.db
-frontend/build/
+frontend/build/backend/.env
+backend/*.db
