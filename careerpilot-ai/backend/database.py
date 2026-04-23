@@ -1,4 +1,7 @@
-# database.py (CareerPilot v2)
+# database.py (CareerPilot Final Upgraded PostgreSQL + SQLite Fallback)
+
+import os
+from datetime import datetime
 
 from sqlalchemy import (
     create_engine,
@@ -7,7 +10,8 @@ from sqlalchemy import (
     String,
     DateTime,
     Text,
-    Boolean
+    Boolean,
+    Float
 )
 
 from sqlalchemy.orm import (
@@ -15,31 +19,53 @@ from sqlalchemy.orm import (
     sessionmaker
 )
 
-from datetime import datetime
-
-
-# ==========================
+# ==================================================
 # DATABASE URL
-# ==========================
+# Priority:
+# 1. Render PostgreSQL ENV
+# 2. Local SQLite fallback
+# ==================================================
 
-DATABASE_URL = "sqlite:///careerpilot_new.db"
-
-
-# ==========================
-# ENGINE
-# ==========================
-
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={
-        "check_same_thread": False
-    }
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "sqlite:///careerpilot_new.db"
 )
 
+# Old postgres:// compatibility
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace(
+        "postgres://",
+        "postgresql://",
+        1
+    )
 
-# ==========================
+# ==================================================
+# ENGINE
+# ==================================================
+
+if DATABASE_URL.startswith("sqlite"):
+
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={
+            "check_same_thread": False
+        }
+    )
+
+else:
+
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_recycle=300,
+        pool_size=5,
+        max_overflow=10,
+        echo=False
+    )
+
+# ==================================================
 # SESSION
-# ==========================
+# ==================================================
 
 SessionLocal = sessionmaker(
     autocommit=False,
@@ -47,17 +73,15 @@ SessionLocal = sessionmaker(
     bind=engine
 )
 
-
-# ==========================
+# ==================================================
 # BASE
-# ==========================
+# ==================================================
 
 Base = declarative_base()
 
-
-# ==========================
+# ==================================================
 # USERS TABLE
-# ==========================
+# ==================================================
 
 class User(Base):
 
@@ -70,29 +94,29 @@ class User(Base):
     )
 
     name = Column(
-        String,
+        String(120),
         nullable=False
     )
 
     email = Column(
-        String,
+        String(180),
         unique=True,
         index=True,
         nullable=False
     )
 
     password = Column(
-        String,
+        String(255),
         nullable=False
     )
 
     phone = Column(
-        String,
+        String(30),
         default=""
     )
 
     city = Column(
-        String,
+        String(120),
         default=""
     )
 
@@ -107,7 +131,7 @@ class User(Base):
     )
 
     plan = Column(
-        String,
+        String(50),
         default="Free"
     )
 
@@ -116,15 +140,24 @@ class User(Base):
         default=False
     )
 
+    is_verified = Column(
+        Boolean,
+        default=False
+    )
+
+    login_count = Column(
+        Integer,
+        default=0
+    )
+
     created_at = Column(
         DateTime,
         default=datetime.utcnow
     )
 
-
-# ==========================
+# ==================================================
 # REPORTS TABLE
-# ==========================
+# ==================================================
 
 class Report(Base):
 
@@ -137,22 +170,23 @@ class Report(Base):
     )
 
     email = Column(
-        String,
+        String(180),
+        index=True,
         default=""
     )
 
     role = Column(
-        String,
+        String(120),
         default=""
     )
 
     salary = Column(
-        String,
+        String(50),
         default=""
     )
 
     ats = Column(
-        String,
+        String(20),
         default=""
     )
 
@@ -161,15 +195,19 @@ class Report(Base):
         default=""
     )
 
+    file_name = Column(
+        String(255),
+        default=""
+    )
+
     created_at = Column(
         DateTime,
         default=datetime.utcnow
     )
 
-
-# ==========================
+# ==================================================
 # NOTIFICATIONS TABLE
-# ==========================
+# ==================================================
 
 class Notification(Base):
 
@@ -182,13 +220,19 @@ class Notification(Base):
     )
 
     email = Column(
-        String,
+        String(180),
+        index=True,
         default=""
     )
 
     text = Column(
         Text,
         nullable=False
+    )
+
+    type = Column(
+        String(50),
+        default="info"
     )
 
     is_read = Column(
@@ -201,10 +245,9 @@ class Notification(Base):
         default=datetime.utcnow
     )
 
-
-# ==========================
+# ==================================================
 # SUPPORT TICKETS TABLE
-# ==========================
+# ==================================================
 
 class SupportTicket(Base):
 
@@ -217,12 +260,12 @@ class SupportTicket(Base):
     )
 
     email = Column(
-        String,
+        String(180),
         default=""
     )
 
     subject = Column(
-        String,
+        String(255),
         default=""
     )
 
@@ -232,7 +275,7 @@ class SupportTicket(Base):
     )
 
     status = Column(
-        String,
+        String(50),
         default="Open"
     )
 
@@ -241,10 +284,9 @@ class SupportTicket(Base):
         default=datetime.utcnow
     )
 
-
-# ==========================
+# ==================================================
 # SUBSCRIPTIONS TABLE
-# ==========================
+# ==================================================
 
 class Subscription(Base):
 
@@ -257,22 +299,23 @@ class Subscription(Base):
     )
 
     email = Column(
-        String,
+        String(180),
+        index=True,
         default=""
     )
 
     plan = Column(
-        String,
+        String(50),
         default="Free"
     )
 
     amount = Column(
-        String,
+        String(50),
         default="0"
     )
 
     status = Column(
-        String,
+        String(50),
         default="Active"
     )
 
@@ -281,11 +324,91 @@ class Subscription(Base):
         default=datetime.utcnow
     )
 
+# ==================================================
+# OTP TABLE
+# ==================================================
 
-# ==========================
-# CREATE TABLES
-# ==========================
+class OTP(Base):
 
-Base.metadata.create_all(
-    bind=engine
-)
+    __tablename__ = "otp_codes"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    email = Column(
+        String(180),
+        index=True,
+        nullable=False
+    )
+
+    code = Column(
+        String(10),
+        nullable=False
+    )
+
+    verified = Column(
+        Boolean,
+        default=False
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+# ==================================================
+# ANALYTICS TABLE
+# ==================================================
+
+class Analytics(Base):
+
+    __tablename__ = "analytics"
+
+    id = Column(
+        Integer,
+        primary_key=True,
+        index=True
+    )
+
+    page = Column(
+        String(120),
+        default=""
+    )
+
+    user_email = Column(
+        String(180),
+        default=""
+    )
+
+    duration = Column(
+        Float,
+        default=0
+    )
+
+    created_at = Column(
+        DateTime,
+        default=datetime.utcnow
+    )
+
+# ==================================================
+# HELPERS
+# ==================================================
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+def init_db():
+    Base.metadata.create_all(bind=engine)
+
+# ==================================================
+# AUTO CREATE TABLES
+# ==================================================
+
+init_db()
