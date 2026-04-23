@@ -206,6 +206,66 @@ function NotificationsCenter() {
 
     };
 
+      /* =========================
+     CLEAR ALL
+  ========================= */
+
+  const clearAll =
+    () => {
+
+      Swal.fire({
+        title:
+          "Clear Notifications?",
+        icon:
+          "warning",
+        showCancelButton: true,
+        confirmButtonText:
+          "Yes"
+      }).then((res) => {
+
+        if (
+          res.isConfirmed
+        ) {
+
+          setNotifications([]);
+
+          localStorage.removeItem(
+            "careerpilot_notify"
+          );
+
+        }
+
+      });
+
+    };
+
+  /* =========================
+     DELETE ONE
+  ========================= */
+
+  const removeOne =
+    (index) => {
+
+      const updated =
+        notifications.filter(
+          (_,
+           i) =>
+            i !== index
+        );
+
+      setNotifications(
+        updated
+      );
+
+      localStorage.setItem(
+        "careerpilot_notify",
+        JSON.stringify(
+          updated
+        )
+      );
+
+    };
+
   /* =========================
      HELPERS
   ========================= */
