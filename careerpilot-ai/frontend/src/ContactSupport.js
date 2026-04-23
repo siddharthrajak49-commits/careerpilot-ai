@@ -1,9 +1,11 @@
 // src/ContactSupport.js
 
 import React, {
-  useState
+  useState,
+  useEffect
 } from "react";
 
+import axios from "axios";
 import Swal from "sweetalert2";
 
 import {
@@ -35,6 +37,8 @@ function ContactSupport() {
       subject: "",
       category:
         "General Help",
+      priority:
+        "Normal",
       message: ""
     });
 
@@ -42,6 +46,27 @@ function ContactSupport() {
     loading,
     setLoading
   ] = useState(false);
+
+  const [
+    tickets,
+    setTickets
+  ] = useState([]);
+    /* =========================
+     LOAD OLD TICKETS
+  ========================= */
+
+  useEffect(() => {
+
+    const saved =
+      JSON.parse(
+        localStorage.getItem(
+          "careerpilot_tickets"
+        )
+      ) || [];
+
+    setTickets(saved);
+
+  }, []);
 
   /* =========================
      HANDLE CHANGE
@@ -58,9 +83,8 @@ function ContactSupport() {
     });
 
   };
-
-  /* =========================
-     SUBMIT
+    /* =========================
+     SUBMIT TICKET
   ========================= */
 
   const submitTicket =
@@ -88,21 +112,64 @@ function ContactSupport() {
 
         setLoading(true);
 
-        // Backend later
-        await new Promise(
-          (resolve) =>
-            setTimeout(
-              resolve,
-              1200
-            )
+        const ticketId =
+          "CP-" +
+          Math.floor(
+            100000 +
+            Math.random() *
+            900000
+          );
+
+        const newTicket = {
+          id: ticketId,
+          name:
+            form.name,
+          email:
+            form.email,
+          subject:
+            form.subject,
+          category:
+            form.category,
+          priority:
+            form.priority,
+          message:
+            form.message,
+          status:
+            "Open",
+          time:
+            new Date().toLocaleString()
+        };
+                try {
+
+          await axios.post(
+            "https://careerpilot-backend-rvv1.onrender.com/support-ticket",
+            newTicket
+          );
+
+        } catch {}
+
+        const updated = [
+          newTicket,
+          ...tickets
+        ];
+
+        setTickets(
+          updated
+        );
+
+        localStorage.setItem(
+          "careerpilot_tickets",
+          JSON.stringify(
+            updated
+          )
         );
 
         Swal.fire({
           icon: "success",
           title:
             "Ticket Submitted",
-          text:
-            "Support team will contact you soon."
+          html:
+            `Ticket ID: <b>${ticketId}</b><br/>Support team will contact you soon.`
         });
 
         setForm({
@@ -126,10 +193,59 @@ function ContactSupport() {
         setLoading(false);
 
       }
+
+    };
+      /* =========================
+     HELPERS
+  ========================= */
+
+  const getBadge =
+    (priority) => {
+
+      if (
+        priority ===
+        "High"
+      )
+        return "🔴";
+
+      if (
+        priority ===
+        "Low"
+      )
+        return "🟢";
+
+      return "🟡";
     };
 
-  /* =========================
-     UI
+  const closeTicket =
+    (id) => {
+
+      const updated =
+        tickets.map(
+          (item) =>
+            item.id === id
+              ? {
+                  ...item,
+                  status:
+                    "Closed"
+                }
+              : item
+        );
+
+      setTickets(
+        updated
+      );
+
+      localStorage.setItem(
+        "careerpilot_tickets",
+        JSON.stringify(
+          updated
+        )
+      );
+
+    };
+      /* =========================
+     UI START
   ========================= */
 
   return (
@@ -162,8 +278,8 @@ function ContactSupport() {
 
               <p className="heroText">
                 Need help with login,
-                resume reports or
-                billing? We are here.
+                reports or billing?
+                We are here.
               </p>
 
             </div>
@@ -173,22 +289,25 @@ function ContactSupport() {
               <div className="statCard">
 
                 <span>⚡</span>
+                <h3>Fast Replies</h3>
+                <p>Priority Support</p>
 
+              </div>
+
+              <div className="statCard">
+
+                <span>🎫</span>
                 <h3>
-                  Fast Replies
+                  {tickets.length}
                 </h3>
-
-                <p>
-                  Priority Support
-                </p>
+                <p>Total Tickets</p>
 
               </div>
 
             </div>
 
           </div>
-
-          {/* MAIN */}
+                    {/* MAIN */}
 
           <div className="card">
 
@@ -239,8 +358,7 @@ function ContactSupport() {
                     handleChange
                   }
                 />
-
-                <select
+                                <select
                   name="category"
                   value={
                     form.category
@@ -249,27 +367,41 @@ function ContactSupport() {
                     handleChange
                   }
                 >
-
                   <option>
                     General Help
                   </option>
-
                   <option>
                     Login Issue
                   </option>
-
                   <option>
                     Billing
                   </option>
-
                   <option>
                     Technical Bug
                   </option>
-
                   <option>
                     Feature Request
                   </option>
+                </select>
 
+                <select
+                  name="priority"
+                  value={
+                    form.priority
+                  }
+                  onChange={
+                    handleChange
+                  }
+                >
+                  <option>
+                    Low
+                  </option>
+                  <option>
+                    Normal
+                  </option>
+                  <option>
+                    High
+                  </option>
                 </select>
 
                 <textarea
@@ -283,8 +415,7 @@ function ContactSupport() {
                     handleChange
                   }
                 />
-
-                <button
+                                <button
                   onClick={
                     submitTicket
                   }
@@ -321,33 +452,89 @@ function ContactSupport() {
                     ⚡ Avg Reply: 2 Hours
                   </p>
 
-                </div>
+                  <p>
+                    💬 Live Chat Soon
+                  </p>
 
-                <h2>
-                  Popular Issues
+                </div>
+                                <h2>
+                  Previous Tickets
                 </h2>
 
-                <ul>
+                {tickets.length ===
+                0 ? (
 
-                  <li>
-                    Password reset issue
-                  </li>
+                  <p>
+                    No tickets yet.
+                  </p>
 
-                  <li>
-                    Resume upload failed
-                  </li>
+                ) : (
 
-                  <li>
-                    Payment not updated
-                  </li>
+                  <ul>
 
-                  <li>
-                    Report not loading
-                  </li>
+                    {tickets.map(
+                      (
+                        item,
+                        index
+                      ) => (
 
-                </ul>
+                        <li
+                          key={index}
+                          style={{
+                            marginBottom:
+                              "12px"
+                          }}
+                        >
 
-                <button
+                          {getBadge(
+                            item.priority
+                          )}{" "}
+                          <b>
+                            {item.id}
+                          </b>
+                          {" - "}
+                          {item.subject}
+
+                          <br />
+
+                          <small>
+                            {item.status}
+                            {" | "}
+                            {item.time}
+                          </small>
+
+                          {item.status !==
+                            "Closed" && (
+
+                            <div
+                              style={{
+                                marginTop:
+                                  "6px"
+                              }}
+                            >
+                              <button
+                                className="btnSm"
+                                onClick={() =>
+                                  closeTicket(
+                                    item.id
+                                  )
+                                }
+                              >
+                                Close
+                              </button>
+                            </div>
+
+                          )}
+
+                        </li>
+
+                      )
+                    )}
+
+                  </ul>
+
+                )}
+                                <button
                   onClick={() =>
                     navigate(
                       "/dashboard"

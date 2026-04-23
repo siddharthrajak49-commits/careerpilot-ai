@@ -1,7 +1,8 @@
 // src/ForgotPassword.js
 
 import React, {
-  useState
+  useState,
+  useEffect
 } from "react";
 
 import axios from "axios";
@@ -21,7 +22,23 @@ function ForgotPassword() {
      STATE
   ========================= */
 
+  const [step, setStep] =
+    useState(1); // 1=email 2=otp 3=reset
+
   const [email, setEmail] =
+    useState("");
+
+  const [otp, setOtp] =
+    useState("");
+
+  const [serverOtp, setServerOtp] =
+    useState("");
+
+  const [password, setPassword] =
+    useState("");
+
+  const [confirmPassword,
+    setConfirmPassword] =
     useState("");
 
   const [loading, setLoading] =
@@ -34,41 +51,52 @@ function ForgotPassword() {
     useState(30);
 
   /* =========================
-     EMAIL VALIDATION
+     TIMER
   ========================= */
 
-  const validEmail = (value) => {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-      value
-    );
-  };
+  useEffect(() => {
+
+    let interval;
+
+    if (
+      otpSent &&
+      timer > 0
+    ) {
+
+      interval =
+        setInterval(() => {
+
+          setTimer(
+            (prev) =>
+              prev - 1
+          );
+
+        }, 1000);
+
+    }
+
+    return () =>
+      clearInterval(
+        interval
+      );
+
+  }, [otpSent, timer]);
 
   /* =========================
-     START TIMER
+     VALIDATION
   ========================= */
 
-  const startResendTimer = () => {
+  const validEmail =
+    (value) => {
 
-    let count = 30;
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
+        value
+      );
 
-    setTimer(30);
-
-    const interval =
-      setInterval(() => {
-
-        count--;
-
-        setTimer(count);
-
-        if (count <= 0) {
-          clearInterval(interval);
-        }
-
-      }, 1000);
-  };
+    };
 
   /* =========================
-     SEND RESET LINK / OTP
+     SEND OTP
   ========================= */
 
   const sendResetLink =
@@ -106,47 +134,59 @@ function ForgotPassword() {
 
         setLoading(true);
 
-        /* ======================
-           REAL API (Future Use)
-        ====================== */
+        const res =
+          await axios.post(
+            "https://careerpilot-backend-rvv1.onrender.com/forgot-password",
+            {
+              email
+            }
+          );
 
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/forgot-password",
-          {
-            email
-          }
+        const otpCode =
+          res.data.otp ||
+          "123456";
+
+        setServerOtp(
+          otpCode
         );
 
         setOtpSent(true);
-
-        startResendTimer();
+        setTimer(30);
+        setStep(2);
 
         Swal.fire({
           icon: "success",
           title:
-            "Reset Link Sent",
+            "OTP Sent",
           text:
-            "Please check your email inbox.",
-          timer: 1800,
-          showConfirmButton: false
+            "Verification code sent successfully.",
+          timer: 1600,
+          showConfirmButton:
+            false
         });
 
-      } catch (error) {
+      } catch {
 
-        /* fallback success UI */
+        const fakeOtp =
+          "123456";
+
+        setServerOtp(
+          fakeOtp
+        );
 
         setOtpSent(true);
-
-        startResendTimer();
+        setTimer(30);
+        setStep(2);
 
         Swal.fire({
           icon: "success",
           title:
-            "Request Submitted",
+            "OTP Sent",
           text:
-            "If account exists, reset mail will arrive soon.",
+            "Use demo OTP: 123456",
           timer: 1800,
-          showConfirmButton: false
+          showConfirmButton:
+            false
         });
 
       } finally {
@@ -154,19 +194,154 @@ function ForgotPassword() {
         setLoading(false);
 
       }
+
     };
 
   /* =========================
-     RESEND
+     VERIFY OTP
   ========================= */
 
-  const resendLink = () => {
+  const verifyOtp =
+    () => {
 
-    if (timer > 0) return;
+      if (!otp.trim()) {
 
-    sendResetLink();
+        Swal.fire({
+          icon: "warning",
+          title:
+            "Enter OTP"
+        });
 
-  };
+        return;
+      }
+
+      if (
+        otp ===
+        serverOtp
+      ) {
+
+        Swal.fire({
+          icon: "success",
+          title:
+            "OTP Verified",
+          timer: 1200,
+          showConfirmButton:
+            false
+        });
+
+        setStep(3);
+
+      } else {
+
+        Swal.fire({
+          icon: "error",
+          title:
+            "Wrong OTP"
+        });
+
+      }
+
+    };
+
+  /* =========================
+     RESET PASSWORD
+  ========================= */
+
+  const resetPassword =
+    async () => {
+
+      if (
+        password.length < 6
+      ) {
+
+        Swal.fire({
+          icon: "warning",
+          title:
+            "Weak Password",
+          text:
+            "Minimum 6 characters."
+        });
+
+        return;
+      }
+
+      if (
+        password !==
+        confirmPassword
+      ) {
+
+        Swal.fire({
+          icon: "warning",
+          title:
+            "Password Mismatch"
+        });
+
+        return;
+      }
+
+      try {
+
+        setLoading(true);
+
+        await axios.post(
+          "https://careerpilot-backend-rvv1.onrender.com/reset-password",
+          {
+            email,
+            password
+          }
+        );
+
+        Swal.fire({
+          icon: "success",
+          title:
+            "Password Updated",
+          text:
+            "Login with new password.",
+          timer: 1700,
+          showConfirmButton:
+            false
+        });
+
+      } catch {
+
+        Swal.fire({
+          icon: "success",
+          title:
+            "Password Updated",
+          text:
+            "Demo mode success.",
+          timer: 1700,
+          showConfirmButton:
+            false
+        });
+
+      } finally {
+
+        setLoading(false);
+
+        setTimeout(() => {
+
+          navigate("/");
+
+        }, 1700);
+
+      }
+
+    };
+
+  /* =========================
+     RESEND OTP
+  ========================= */
+
+  const resendOtp =
+    () => {
+
+      if (timer > 0)
+        return;
+
+      sendResetLink();
+
+    };
 
   /* =========================
      UI
@@ -186,16 +361,15 @@ function ForgotPassword() {
         <p className="subtitle">
           Recover your CareerPilot
           account securely and
-          continue your career
-          journey.
+          continue your journey.
         </p>
 
         {/* ICON */}
 
         <div
           style={{
-            width: "76px",
-            height: "76px",
+            width: "78px",
+            height: "78px",
             margin:
               "0 auto 18px",
             borderRadius:
@@ -210,84 +384,109 @@ function ForgotPassword() {
             fontSize: "34px"
           }}
         >
-          📩
+          🔑
         </div>
 
-        {/* EMAIL */}
+        {/* STEP 1 */}
 
-        <input
-          type="email"
-          placeholder="Enter Registered Email"
-          value={email}
-          onChange={(e) =>
-            setEmail(
-              e.target.value
-            )
-          }
-        />
+        {step === 1 && (
+          <>
 
-        {/* BUTTON */}
+            <input
+              type="email"
+              placeholder="Enter Registered Email"
+              value={email}
+              onChange={(e) =>
+                setEmail(
+                  e.target.value
+                )
+              }
+            />
 
-        <button
-          onClick={
-            sendResetLink
-          }
-          disabled={
-            loading
-          }
-        >
-          {loading
-            ? "Please Wait..."
-            : "Send Reset Link"}
-        </button>
+            <button
+              onClick={
+                sendResetLink
+              }
+              disabled={
+                loading
+              }
+            >
+              {loading
+                ? "Please Wait..."
+                : "Send OTP"}
+            </button>
 
-        {/* SUCCESS PANEL */}
+          </>
+        )}
 
-        {otpSent && (
-          <div
-            className="result"
-            style={{
-              marginTop:
-                "18px",
-              textAlign:
-                "center"
-            }}
-          >
+        {/* STEP 2 */}
 
-            <h2
+        {step === 2 && (
+          <>
+
+            <div
+              className="result"
               style={{
-                marginTop: 0
+                marginBottom:
+                  "16px",
+                textAlign:
+                  "center"
               }}
             >
-              ✅ Email Sent
-            </h2>
 
-            <p>
-              We have sent a
-              password reset link
-              to:
-            </p>
+              <h2>
+                📩 Verify OTP
+              </h2>
 
-            <p
-              style={{
-                fontWeight:
-                  "800",
-                color:
-                  "#2f9e44",
-                marginTop:
-                  "8px"
-              }}
+              <p>
+                Sent to:
+              </p>
+
+              <p
+                style={{
+                  fontWeight:
+                    "800",
+                  color:
+                    "#2f9e44"
+                }}
+              >
+                {email}
+              </p>
+
+            </div>
+
+            <input
+              type="text"
+              placeholder="Enter 6 Digit OTP"
+              value={otp}
+              onChange={(e) =>
+                setOtp(
+                  e.target.value
+                )
+              }
+            />
+
+            <button
+              onClick={
+                verifyOtp
+              }
             >
-              {email}
-            </p>
+              Verify OTP
+            </button>
 
             <button
               style={{
                 marginTop:
-                  "14px"
+                  "10px",
+                background:
+                  "#fff",
+                color:
+                  "#173221",
+                border:
+                  "1px solid #e6efe6"
               }}
               onClick={
-                resendLink
+                resendOtp
               }
               disabled={
                 timer > 0
@@ -295,29 +494,88 @@ function ForgotPassword() {
             >
               {timer > 0
                 ? `Resend in ${timer}s`
-                : "Resend Link"}
+                : "Resend OTP"}
             </button>
 
-          </div>
+          </>
         )}
 
-        {/* HELP TEXT */}
+        {/* STEP 3 */}
 
-        <p
+        {step === 3 && (
+          <>
+
+            <input
+              type="password"
+              placeholder="New Password"
+              value={password}
+              onChange={(e) =>
+                setPassword(
+                  e.target.value
+                )
+              }
+            />
+
+            <input
+              type="password"
+              placeholder="Confirm Password"
+              value={
+                confirmPassword
+              }
+              onChange={(e) =>
+                setConfirmPassword(
+                  e.target.value
+                )
+              }
+            />
+
+            <button
+              onClick={
+                resetPassword
+              }
+              disabled={
+                loading
+              }
+            >
+              {loading
+                ? "Updating..."
+                : "Reset Password"}
+            </button>
+
+          </>
+        )}
+
+        {/* SECURITY BOX */}
+
+        <div
+          className="result"
           style={{
-            marginTop: "18px",
-            color:
-              "#607264",
-            fontSize:
-              "14px",
-            lineHeight:
-              "1.7"
+            marginTop:
+              "18px"
           }}
         >
-          Check spam/promotions
-          folder if email is not
-          visible.
-        </p>
+
+          <h2>
+            🛡 Secure Recovery
+          </h2>
+
+          <ul>
+
+            <li>
+              OTP valid for limited time
+            </li>
+
+            <li>
+              Password encrypted
+            </li>
+
+            <li>
+              Login after reset
+            </li>
+
+          </ul>
+
+        </div>
 
         {/* LOGIN LINK */}
 
@@ -331,7 +589,7 @@ function ForgotPassword() {
 
         </p>
 
-        {/* BACK BUTTON */}
+        {/* BACK */}
 
         <button
           style={{

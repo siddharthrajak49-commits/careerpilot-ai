@@ -43,7 +43,7 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://your-vercel-domain.vercel.app", "http://localhost:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -80,6 +80,16 @@ class ForgotPasswordData(BaseModel):
 class ResetPasswordData(BaseModel):
     email: str
     password: str
+
+# ==================================
+# GOOGLE LOGIN MODEL
+# (Add inside MODELS section)
+# ==================================
+
+class GoogleLoginData(BaseModel):
+    name: str
+    email: str
+    photo: str = ""
 
 
 # ==================================
@@ -201,6 +211,68 @@ def login(data: LoginData):
         "token": token,
         "user": user.name,
         "email": user.email
+    }
+
+# ==================================
+# GOOGLE LOGIN
+# (Add after normal /login route)
+# ==================================
+
+@app.post("/google-login")
+def google_login(
+    data: GoogleLoginData
+):
+
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.email == data.email
+    ).first()
+
+    # If new Google user
+    if not user:
+
+        user = User(
+            name=data.name,
+            email=data.email,
+            password=hash_password(
+                "google_auth_user"
+            ),
+            avatar=data.photo,
+            is_verified=True,
+            plan="Free"
+        )
+
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+
+    else:
+
+        # update latest name/photo
+        user.name = data.name
+
+        try:
+            user.avatar = data.photo
+        except:
+            pass
+
+        db.commit()
+
+    token = create_token({
+        "sub": user.email
+    })
+
+    db.close()
+
+    return {
+        "message":
+            "Google Login Success",
+        "token": token,
+        "user": user.name,
+        "email": user.email,
+        "photo": data.photo,
+        "plan": user.plan
     }
 
 
@@ -390,9 +462,10 @@ async def analyze_resume(
     db = SessionLocal()
 
     report = Report(
-        role=role,
-        salary=str(salary),
-        ats=str(ats_score)
+    email="guest_user",
+    role=role,
+    salary=str(salary),
+    ats=str(ats_score)
     )
 
     db.add(report)

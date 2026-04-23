@@ -6,3 +6,5 @@ careerpilot-ai/backend/temp.pdf
 careerpilot-ai/backend/careerpilot.db
 frontend/build/backend/.env
 backend/*.db
+.DS_Store
+.DS_Store

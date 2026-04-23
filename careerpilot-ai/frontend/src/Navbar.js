@@ -2,7 +2,8 @@
 
 import React, {
   useState,
-  useEffect
+  useEffect,
+  useRef
 } from "react";
 
 import {
@@ -19,6 +20,9 @@ function Navbar() {
   const location =
     useLocation();
 
+  const profileRef =
+    useRef(null);
+
   /* =========================
      STATE
   ========================= */
@@ -29,24 +33,98 @@ function Navbar() {
   ] = useState(false);
 
   const [
+    profileOpen,
+    setProfileOpen
+  ] = useState(false);
+
+  const [
     scrolled,
     setScrolled
   ] = useState(false);
 
+  const [
+    userName,
+    setUserName
+  ] = useState("User");
+
+  const [
+    photo,
+    setPhoto
+  ] = useState("");
+
+  const [
+    plan,
+    setPlan
+  ] = useState("Free");
+
+  const [
+    email,
+    setEmail
+  ] = useState("");
+
   /* =========================
-     USER
+     LOAD USER
   ========================= */
 
-  const userName =
-    localStorage.getItem("user") ||
-    "User";
+  useEffect(() => {
+
+    const loadUser = () => {
+
+      const name =
+        localStorage.getItem(
+          "user"
+        ) || "User";
+
+      const image =
+        localStorage.getItem(
+          "photo"
+        ) ||
+        localStorage.getItem(
+          "avatar"
+        ) ||
+        "";
+
+      const userPlan =
+        localStorage.getItem(
+          "plan"
+        ) || "Free";
+
+      const userEmail =
+        localStorage.getItem(
+          "email"
+        ) || "";
+
+      setUserName(name);
+      setPhoto(image);
+      setPlan(userPlan);
+      setEmail(userEmail);
+
+    };
+
+    loadUser();
+
+    window.addEventListener(
+      "storage",
+      loadUser
+    );
+
+    return () =>
+      window.removeEventListener(
+        "storage",
+        loadUser
+      );
+
+  }, []);
+
+  /* =========================
+     USER LETTER
+  ========================= */
 
   const firstLetter =
     userName
       .charAt(0)
       .toUpperCase();
-
-  /* =========================
+        /* =========================
      SCROLL EFFECT
   ========================= */
 
@@ -58,9 +136,13 @@ function Navbar() {
         if (
           window.scrollY > 20
         ) {
+
           setScrolled(true);
+
         } else {
+
           setScrolled(false);
+
         }
 
       };
@@ -74,6 +156,52 @@ function Navbar() {
       window.removeEventListener(
         "scroll",
         handleScroll
+      );
+
+  }, []);
+
+  /* =========================
+     AUTO CLOSE ON ROUTE
+  ========================= */
+
+  useEffect(() => {
+
+    setMenuOpen(false);
+    setProfileOpen(false);
+
+  }, [location.pathname]);
+
+  /* =========================
+     CLICK OUTSIDE PROFILE
+  ========================= */
+
+  useEffect(() => {
+
+    const handleClick =
+      (e) => {
+
+        if (
+          profileRef.current &&
+          !profileRef.current.contains(
+            e.target
+          )
+        ) {
+
+          setProfileOpen(false);
+
+        }
+
+      };
+
+    document.addEventListener(
+      "mousedown",
+      handleClick
+    );
+
+    return () =>
+      document.removeEventListener(
+        "mousedown",
+        handleClick
       );
 
   }, []);
@@ -105,12 +233,12 @@ function Navbar() {
       path
         ? "activeNav"
         : "";
-
-  /* =========================
-     UI
+          /* =========================
+     UI START
   ========================= */
 
   return (
+
     <div
       className="navbar"
       style={{
@@ -125,7 +253,18 @@ function Navbar() {
 
       <div className="navLeft">
 
-        <div className="logo">
+        <div
+          className="logo"
+          onClick={() =>
+            navigate(
+              "/dashboard"
+            )
+          }
+          style={{
+            cursor:
+              "pointer"
+          }}
+        >
           🚀 CareerPilot
         </div>
 
@@ -215,8 +354,7 @@ function Navbar() {
         >
           Alerts
         </Link>
-
-        <Link
+                <Link
           to="/profile"
           className={isActive(
             "/profile"
@@ -254,11 +392,46 @@ function Navbar() {
 
         {/* PROFILE */}
 
-        <div className="navProfile">
+        <div
+          className="navProfile"
+          ref={profileRef}
+          onClick={() =>
+            setProfileOpen(
+              !profileOpen
+            )
+          }
+          style={{
+            cursor:
+              "pointer",
+            position:
+              "relative"
+          }}
+        >
 
-          <div className="avatarCircle">
-            {firstLetter}
-          </div>
+          {photo ? (
+
+            <img
+              src={photo}
+              alt="profile"
+              style={{
+                width: "42px",
+                height: "42px",
+                borderRadius:
+                  "50%",
+                objectFit:
+                  "cover",
+                border:
+                  "2px solid #e7f5ea"
+              }}
+            />
+
+          ) : (
+
+            <div className="avatarCircle">
+              {firstLetter}
+            </div>
+
+          )}
 
           <div className="profileMeta">
 
@@ -266,15 +439,149 @@ function Navbar() {
               {userName}
             </span>
 
-            <small>
-              Premium User
+            <small
+              style={{
+                color:
+                  plan ===
+                  "Premium"
+                    ? "#f59f00"
+                    : "#94a398",
+                fontWeight:
+                  "700"
+              }}
+            >
+              {plan ===
+              "Premium"
+                ? "⭐ Premium"
+                : "Free User"}
             </small>
 
           </div>
+                    {/* DROPDOWN */}
+
+          {profileOpen && (
+
+            <div
+              style={{
+                position:
+                  "absolute",
+                top: "55px",
+                right: "0",
+                minWidth:
+                  "220px",
+                background:
+                  "#ffffff",
+                border:
+                  "1px solid #edf2ee",
+                borderRadius:
+                  "14px",
+                padding:
+                  "10px",
+                boxShadow:
+                  "0 16px 35px rgba(0,0,0,.08)",
+                zIndex: 999
+              }}
+            >
+
+              <div
+                style={{
+                  padding:
+                    "10px",
+                  borderBottom:
+                    "1px solid #f1f3f2",
+                  marginBottom:
+                    "8px"
+                }}
+              >
+
+                <strong>
+                  {userName}
+                </strong>
+
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize:
+                      "12px",
+                    color:
+                      "#94a398"
+                  }}
+                >
+                  {email}
+                </p>
+
+              </div>
+
+              <Link
+                to="/profile"
+                onClick={
+                  closeMenu
+                }
+                style={{
+                  display:
+                    "block",
+                  padding:
+                    "10px"
+                }}
+              >
+                👤 My Profile
+              </Link>
+
+              <Link
+                to="/settings"
+                onClick={
+                  closeMenu
+                }
+                style={{
+                  display:
+                    "block",
+                  padding:
+                    "10px"
+                }}
+              >
+                ⚙️ Settings
+              </Link>
+
+              <Link
+                to="/dashboard"
+                onClick={
+                  closeMenu
+                }
+                style={{
+                  display:
+                    "block",
+                  padding:
+                    "10px"
+                }}
+              >
+                🚀 Dashboard
+              </Link>
+
+              <div
+                onClick={
+                  logout
+                }
+                style={{
+                  padding:
+                    "10px",
+                  cursor:
+                    "pointer",
+                  color:
+                    "#e03131",
+                  fontWeight:
+                    "700"
+                }}
+              >
+                Logout
+              </div>
+
+            </div>
+
+          )}
 
         </div>
 
-        {/* LOGOUT */}
+        {/* LOGOUT BUTTON */}
 
         <button
           className="navBtn"
@@ -288,7 +595,9 @@ function Navbar() {
       </div>
 
     </div>
+
   );
+
 }
 
 export default Navbar;

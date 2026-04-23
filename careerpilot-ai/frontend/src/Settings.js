@@ -48,7 +48,33 @@ function Settings() {
     setLanguage
   ] = useState("English");
 
-  /* =========================
+  /* NEW PREMIUM */
+
+  const [
+    soundAlerts,
+    setSoundAlerts
+  ] = useState(true);
+
+  const [
+    themeMode,
+    setThemeMode
+  ] = useState("Light");
+
+  const [
+    userName,
+    setUserName
+  ] = useState("User");
+
+  const [
+    email,
+    setEmail
+  ] = useState("");
+
+  const [
+    photo,
+    setPhoto
+  ] = useState("");
+    /* =========================
      LOAD SETTINGS
   ========================= */
 
@@ -83,11 +109,70 @@ function Settings() {
         saved.language
       );
 
+      setSoundAlerts(
+        saved.soundAlerts ??
+        true
+      );
+
+      setThemeMode(
+        saved.themeMode ||
+        "Light"
+      );
+
     }
+
+    /* Load User */
+
+    setUserName(
+      localStorage.getItem(
+        "user"
+      ) || "User"
+    );
+
+    setEmail(
+      localStorage.getItem(
+        "email"
+      ) || ""
+    );
+
+    setPhoto(
+      localStorage.getItem(
+        "photo"
+      ) ||
+      localStorage.getItem(
+        "avatar"
+      ) ||
+      ""
+    );
 
   }, []);
 
   /* =========================
+     APPLY DARK MODE
+  ========================= */
+
+  useEffect(() => {
+
+    if (
+      darkMode ||
+      themeMode === "Dark"
+    ) {
+
+      document.body.style.background =
+        "#0f1720";
+
+    } else {
+
+      document.body.style.background =
+        "";
+
+    }
+
+  }, [
+    darkMode,
+    themeMode
+  ]);
+    /* =========================
      SAVE SETTINGS
   ========================= */
 
@@ -98,7 +183,9 @@ function Settings() {
       notifications,
       emailAlerts,
       autoLogout,
-      language
+      language,
+      soundAlerts,
+      themeMode
     };
 
     localStorage.setItem(
@@ -139,6 +226,19 @@ function Settings() {
   };
 
   /* =========================
+     RESET ALL SETTINGS
+  ========================= */
+
+  const resetSettings = () => {
+
+    localStorage.removeItem(
+      "careerpilot_settings"
+    );
+
+    window.location.reload();
+
+  };
+    /* =========================
      LOGOUT ALL
   ========================= */
 
@@ -196,7 +296,40 @@ function Settings() {
   };
 
   /* =========================
-     UI
+     DOWNLOAD USER DATA
+  ========================= */
+
+  const downloadData = () => {
+
+    const data =
+      JSON.stringify(
+        localStorage,
+        null,
+        2
+      );
+
+    const blob =
+      new Blob([data], {
+        type:
+          "application/json"
+      });
+
+    const url =
+      URL.createObjectURL(
+        blob
+      );
+
+    const a =
+      document.createElement("a");
+
+    a.href = url;
+    a.download =
+      "careerpilot-data.json";
+    a.click();
+
+  };
+    /* =========================
+     UI START
   ========================= */
 
   return (
@@ -239,14 +372,33 @@ function Settings() {
 
               <div className="statCard">
 
-                <span>🔒</span>
+                {photo ? (
+
+                  <img
+                    src={photo}
+                    alt="profile"
+                    style={{
+                      width: "55px",
+                      height: "55px",
+                      borderRadius:
+                        "50%",
+                      objectFit:
+                        "cover"
+                    }}
+                  />
+
+                ) : (
+
+                  <span>🔒</span>
+
+                )}
 
                 <h3>
-                  Secure
+                  {userName}
                 </h3>
 
                 <p>
-                  Privacy Controls
+                  {email || "Secure User"}
                 </p>
 
               </div>
@@ -267,8 +419,7 @@ function Settings() {
               Personalize CareerPilot
               the way you like.
             </p>
-
-            {/* Toggles */}
+                        {/* TOGGLES */}
 
             <div className="result">
 
@@ -337,9 +488,30 @@ function Settings() {
                   : "OFF"}
               </button>
 
-            </div>
+              <p
+                style={{
+                  marginTop:
+                    "16px"
+                }}
+              >
+                Sound Alerts
+              </p>
 
-            {/* Auto Logout */}
+              <button
+                className="btnSm"
+                onClick={() =>
+                  setSoundAlerts(
+                    !soundAlerts
+                  )
+                }
+              >
+                {soundAlerts
+                  ? "ON"
+                  : "OFF"}
+              </button>
+
+            </div>
+                        {/* SECURITY */}
 
             <div className="result">
 
@@ -406,9 +578,40 @@ function Settings() {
                 </option>
               </select>
 
-            </div>
+              <p
+                style={{
+                  marginTop:
+                    "18px"
+                }}
+              >
+                Theme Mode
+              </p>
 
-            {/* Actions */}
+              <select
+                value={
+                  themeMode
+                }
+                onChange={(e) =>
+                  setThemeMode(
+                    e.target.value
+                  )
+                }
+              >
+                <option>
+                  Light
+                </option>
+
+                <option>
+                  Dark
+                </option>
+
+                <option>
+                  Auto
+                </option>
+              </select>
+
+            </div>
+                        {/* ACTIONS */}
 
             <div className="result">
 
@@ -432,6 +635,22 @@ function Settings() {
                   }
                 >
                   Clear History
+                </button>
+
+                <button
+                  onClick={
+                    downloadData
+                  }
+                >
+                  Download Data
+                </button>
+
+                <button
+                  onClick={
+                    resetSettings
+                  }
+                >
+                  Reset Settings
                 </button>
 
                 <button
@@ -460,7 +679,7 @@ function Settings() {
 
             </div>
 
-            {/* Footer */}
+            {/* FOOTER */}
 
             <p
               style={{

@@ -13,6 +13,23 @@ import {
   Link
 } from "react-router-dom";
 
+/* =========================
+   FIREBASE GOOGLE LOGIN
+========================= */
+
+import {
+  signInWithPopup
+} from "firebase/auth";
+
+import {
+  auth,
+  provider
+} from "./firebase";
+
+/* =========================
+   COMPONENT
+========================= */
+
 function Login() {
 
   const navigate =
@@ -47,10 +64,14 @@ function Login() {
   useEffect(() => {
 
     const token =
-      localStorage.getItem("token");
+      localStorage.getItem(
+        "token"
+      );
 
     if (token) {
-      navigate("/dashboard");
+      navigate(
+        "/dashboard"
+      );
     }
 
     const savedEmail =
@@ -59,8 +80,15 @@ function Login() {
       );
 
     if (savedEmail) {
-      setEmail(savedEmail);
-      setRememberMe(true);
+
+      setEmail(
+        savedEmail
+      );
+
+      setRememberMe(
+        true
+      );
+
     }
 
   }, [navigate]);
@@ -74,38 +102,49 @@ function Login() {
     let newErrors = {};
 
     if (!email.trim()) {
+
       newErrors.email =
         "Email is required";
+
     } else if (
       !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
         email
       )
     ) {
+
       newErrors.email =
         "Invalid email format";
+
     }
 
     if (!password.trim()) {
+
       newErrors.password =
         "Password is required";
+
     } else if (
       password.length < 6
     ) {
+
       newErrors.password =
         "Minimum 6 characters";
+
     }
 
-    setErrors(newErrors);
+    setErrors(
+      newErrors
+    );
 
     return (
-      Object.keys(newErrors)
-        .length === 0
+      Object.keys(
+        newErrors
+      ).length === 0
     );
 
   };
 
   /* =========================
-     LOGIN API
+     NORMAL LOGIN API
   ========================= */
 
   const loginUser = async () => {
@@ -114,7 +153,8 @@ function Login() {
 
       Swal.fire({
         icon: "warning",
-        title: "Invalid Form",
+        title:
+          "Invalid Form",
         text:
           "Please check your details."
       });
@@ -124,7 +164,9 @@ function Login() {
 
     try {
 
-      setLoading(true);
+      setLoading(
+        true
+      );
 
       const res =
         await axios.post(
@@ -147,9 +189,16 @@ function Login() {
         res.data.user
       );
 
+      localStorage.setItem(
+        "email",
+        res.data.email
+      );
+
       /* Remember Email */
 
-      if (rememberMe) {
+      if (
+        rememberMe
+      ) {
 
         localStorage.setItem(
           "remember_email",
@@ -161,6 +210,7 @@ function Login() {
         localStorage.removeItem(
           "remember_email"
         );
+
       }
 
       Swal.fire({
@@ -170,11 +220,16 @@ function Login() {
         text:
           "Welcome back to CareerPilot 🚀",
         timer: 1500,
-        showConfirmButton: false
+        showConfirmButton:
+          false
       });
 
       setTimeout(() => {
-        navigate("/dashboard");
+
+        navigate(
+          "/dashboard"
+        );
+
       }, 1500);
 
     } catch (error) {
@@ -207,34 +262,113 @@ function Login() {
 
     } finally {
 
+      setLoading(
+        false
+      );
+
+    }
+
+  };
+
+  /* =========================
+     GOOGLE LOGIN REAL
+  ========================= */
+    const googleLogin =
+    async () => {
+        try {
+            setLoading(true);
+            const result =
+            await signInWithPopup(auth,provider
+        );
+
+      const user =
+        result.user;
+
+      const res =
+        await axios.post(
+          "https://careerpilot-backend-rvv1.onrender.com/google-login",
+          {
+            name:
+              user.displayName,
+            email:
+              user.email,
+            photo:
+              user.photoURL || ""
+          }
+        );
+
+      localStorage.setItem(
+        "token",
+        res.data.token
+      );
+
+      localStorage.setItem(
+        "user",
+        res.data.user
+      );
+
+      localStorage.setItem(
+        "email",
+        res.data.email
+      );
+
+      localStorage.setItem(
+        "photo",
+        res.data.photo || ""
+      );
+
+      localStorage.setItem(
+        "plan",
+        res.data.plan || "Free"
+      );
+
+      Swal.fire({
+        icon: "success",
+        title:
+          "Google Login Successful",
+        text:
+          `Welcome ${res.data.user} 🚀`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
+
+    } catch (error) {
+
+      Swal.fire({
+        icon: "error",
+        title:
+          "Google Login Failed",
+        text:
+          "Please try again."
+      });
+
+    } finally {
+
       setLoading(false);
 
     }
+
   };
 
   /* =========================
      ENTER KEY LOGIN
   ========================= */
 
-  const handleEnter = (e) => {
-    if (e.key === "Enter") {
+  const handleEnter = (
+    e
+  ) => {
+
+    if (
+      e.key === "Enter"
+    ) {
+
       loginUser();
+
     }
-  };
-
-  /* =========================
-     GOOGLE LOGIN UI
-  ========================= */
-
-  const googleLogin = () => {
-
-    Swal.fire({
-      icon: "info",
-      title:
-        "Coming Soon",
-      text:
-        "Google Login will be added in premium version."
-    });
 
   };
 
@@ -450,6 +584,9 @@ function Login() {
         <button
           onClick={
             googleLogin
+          }
+          disabled={
+            loading
           }
           style={{
             background:

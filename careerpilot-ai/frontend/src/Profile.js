@@ -5,6 +5,7 @@ import React, {
   useEffect
 } from "react";
 
+import axios from "axios";
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 
@@ -48,10 +49,13 @@ function Profile() {
     useState(128);
 
   const [plan, setPlan] =
-    useState("Premium");
+    useState("Free");
 
   const [avatar, setAvatar] =
     useState("");
+
+  const [loading, setLoading] =
+    useState(false);
 
   /* =========================
      LOAD DATA
@@ -66,35 +70,8 @@ function Profile() {
         )
       ) || [];
 
-    setName(
-      localStorage.getItem(
-        "user"
-      ) || "User"
-    );
-
-    setEmail(
-      localStorage.getItem(
-        "email"
-      ) || "user@email.com"
-    );
-
-    setPhone(
-      localStorage.getItem(
-        "phone"
-      ) || ""
-    );
-
-    setCity(
-      localStorage.getItem(
-        "city"
-      ) || ""
-    );
-
-    setBio(
-      localStorage.getItem(
-        "bio"
-      ) ||
-      "Building my dream career with CareerPilot."
+    setResumeCount(
+      history.length
     );
 
     setJoinedDate(
@@ -104,193 +81,301 @@ function Profile() {
       new Date().toLocaleDateString()
     );
 
-    setPlan(
-      localStorage.getItem(
-        "plan"
-      ) || "Premium"
-    );
-
     setAvatar(
       localStorage.getItem(
+        "photo"
+      ) ||
+      localStorage.getItem(
         "avatar"
-      ) || ""
+      ) ||
+      ""
     );
 
-    setResumeCount(
-      history.length
-    );
+    loadProfile();
 
   }, []);
+
+  /* =========================
+     BACKEND PROFILE LOAD
+  ========================= */
+
+  const loadProfile =
+    async () => {
+
+      try {
+
+        const token =
+          localStorage.getItem(
+            "token"
+          );
+
+        if (!token) {
+
+          fallbackLocal();
+          return;
+
+        }
+
+        const res =
+          await axios.get(
+            "https://careerpilot-backend-rvv1.onrender.com/me",
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`
+              }
+            }
+          );
+
+        const data =
+          res.data;
+
+        setName(
+          data.name || "User"
+        );
+
+        setEmail(
+          data.email || ""
+        );
+
+        setPhone(
+          data.phone || ""
+        );
+
+        setCity(
+          data.city || ""
+        );
+
+        setBio(
+          data.bio ||
+          "Building my dream career with CareerPilot."
+        );
+
+        setPlan(
+          data.plan || "Free"
+        );
+
+        localStorage.setItem(
+          "user",
+          data.name || "User"
+        );
+
+        localStorage.setItem(
+          "email",
+          data.email || ""
+        );
+
+      } catch {
+
+        fallbackLocal();
+
+      }
+
+    };
+
+  /* =========================
+     FALLBACK LOCAL
+  ========================= */
+
+  const fallbackLocal =
+    () => {
+
+      setName(
+        localStorage.getItem(
+          "user"
+        ) || "User"
+      );
+
+      setEmail(
+        localStorage.getItem(
+          "email"
+        ) || ""
+      );
+
+      setPhone(
+        localStorage.getItem(
+          "phone"
+        ) || ""
+      );
+
+      setCity(
+        localStorage.getItem(
+          "city"
+        ) || ""
+      );
+
+      setBio(
+        localStorage.getItem(
+          "bio"
+        ) ||
+        "Building my dream career with CareerPilot."
+      );
+
+      setPlan(
+        localStorage.getItem(
+          "plan"
+        ) || "Free"
+      );
+
+    };
 
   /* =========================
      SAVE PROFILE
   ========================= */
 
-  const saveProfile = () => {
+  const saveProfile =
+    async () => {
 
-    if (!name || !email) {
+      if (!name || !email) {
 
-      Swal.fire({
-        icon: "warning",
-        title:
-          "Missing Fields",
-        text:
-          "Name and Email required."
-      });
+        Swal.fire({
+          icon: "warning",
+          title:
+            "Missing Fields",
+          text:
+            "Name and Email required."
+        });
 
-      return;
-    }
+        return;
 
-    localStorage.setItem(
-      "user",
-      name
-    );
+      }
 
-    localStorage.setItem(
-      "email",
-      email
-    );
+      try {
 
-    localStorage.setItem(
-      "phone",
-      phone
-    );
+        setLoading(true);
 
-    localStorage.setItem(
-      "city",
-      city
-    );
+        const token =
+          localStorage.getItem(
+            "token"
+          );
 
-    localStorage.setItem(
-      "bio",
-      bio
-    );
+        await axios.post(
+          "https://careerpilot-backend-rvv1.onrender.com/profile/update",
+          {
+            name,
+            email,
+            phone,
+            city,
+            bio
+          },
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`
+            }
+          }
+        );
 
-    localStorage.setItem(
-      "plan",
-      plan
-    );
+      } catch {}
 
-    Swal.fire({
-      icon: "success",
-      title:
-        "Profile Updated",
-      text:
-        "Saved successfully.",
-      timer: 1500,
-      showConfirmButton: false
-    });
-
-    setEditing(false);
-
-  };
-
-  /* =========================
-     AVATAR UPLOAD
-  ========================= */
-
-  const handleAvatar = (e) => {
-
-    const file =
-      e.target.files[0];
-
-    if (!file) return;
-
-    const reader =
-      new FileReader();
-
-    reader.onloadend = () => {
-
-      setAvatar(
-        reader.result
+      localStorage.setItem(
+        "user",
+        name
       );
 
       localStorage.setItem(
-        "avatar",
-        reader.result
+        "email",
+        email
       );
+
+      localStorage.setItem(
+        "phone",
+        phone
+      );
+
+      localStorage.setItem(
+        "city",
+        city
+      );
+
+      localStorage.setItem(
+        "bio",
+        bio
+      );
+
+      Swal.fire({
+        icon: "success",
+        title:
+          "Profile Updated",
+        text:
+          "Saved successfully.",
+        timer: 1400,
+        showConfirmButton: false
+      });
+
+      setEditing(false);
+      setLoading(false);
 
     };
 
-    reader.readAsDataURL(file);
+  /* =========================
+     AVATAR
+  ========================= */
 
-  };
+  const handleAvatar =
+    (e) => {
+
+      const file =
+        e.target.files[0];
+
+      if (!file) return;
+
+      const reader =
+        new FileReader();
+
+      reader.onloadend =
+        () => {
+
+          setAvatar(
+            reader.result
+          );
+
+          localStorage.setItem(
+            "avatar",
+            reader.result
+          );
+
+        };
+
+      reader.readAsDataURL(
+        file
+      );
+
+    };
 
   /* =========================
      CHANGE PASSWORD
   ========================= */
 
-  const changePassword = () => {
+  const changePassword =
+    () => {
 
-    Swal.fire({
-      title:
-        "Change Password",
+      Swal.fire({
+        icon: "info",
+        title:
+          "Use Forgot Password",
+        text:
+          "Password reset available on login page."
+      });
 
-      html:
-        `<input 
-          id="newPass" 
-          class="swal2-input" 
-          type="password" 
-          placeholder="New Password"
-        />`,
-
-      confirmButtonText:
-        "Update",
-
-      preConfirm: () => {
-
-        const pass =
-          document.getElementById(
-            "newPass"
-          ).value;
-
-        if (!pass) {
-
-          Swal.showValidationMessage(
-            "Enter password"
-          );
-
-        }
-
-        return pass;
-
-      }
-
-    }).then((res) => {
-
-      if (res.isConfirmed) {
-
-        Swal.fire({
-          icon: "success",
-          title: "Updated",
-          text:
-            "Password changed successfully."
-        });
-
-      }
-
-    });
-
-  };
+    };
 
   /* =========================
      LOGOUT
   ========================= */
 
-  const logout = () => {
+  const logout =
+    () => {
 
-    localStorage.clear();
+      localStorage.clear();
+      navigate("/");
 
-    navigate("/");
-
-  };
-
-  /* =========================
-     USER LETTER
-  ========================= */
+    };
 
   const firstLetter =
-    name.charAt(0).toUpperCase();
+    name
+      ?.charAt(0)
+      ?.toUpperCase() || "U";
 
   /* =========================
      UI
@@ -326,9 +411,9 @@ function Profile() {
               </h2>
 
               <p className="heroText">
-                Manage account,
-                privacy, membership
-                and growth here.
+                Manage your account,
+                membership and
+                career growth.
               </p>
 
             </div>
@@ -338,9 +423,7 @@ function Profile() {
               <div className="statCard">
 
                 <span>⭐</span>
-
                 <h3>{plan}</h3>
-
                 <p>Membership</p>
 
               </div>
@@ -349,7 +432,7 @@ function Profile() {
 
           </div>
 
-          {/* MAIN CARD */}
+          {/* MAIN */}
 
           <div className="card">
 
@@ -358,8 +441,7 @@ function Profile() {
             </h1>
 
             <p className="subtitle">
-              Full future-ready
-              profile dashboard.
+              Premium Profile Dashboard
             </p>
 
             {/* AVATAR */}
@@ -382,9 +464,7 @@ function Profile() {
                     borderRadius:
                       "50%",
                     objectFit:
-                      "cover",
-                    margin:
-                      "0 auto"
+                      "cover"
                   }}
                 />
 
@@ -429,7 +509,7 @@ function Profile() {
 
             </div>
 
-            {/* FORM / DETAILS */}
+            {/* FORM */}
 
             {editing ? (
 
@@ -437,7 +517,7 @@ function Profile() {
 
                 <input
                   value={name}
-                  onChange={(e) =>
+                  onChange={(e)=>
                     setName(
                       e.target.value
                     )
@@ -447,7 +527,7 @@ function Profile() {
 
                 <input
                   value={email}
-                  onChange={(e) =>
+                  onChange={(e)=>
                     setEmail(
                       e.target.value
                     )
@@ -457,7 +537,7 @@ function Profile() {
 
                 <input
                   value={phone}
-                  onChange={(e) =>
+                  onChange={(e)=>
                     setPhone(
                       e.target.value
                     )
@@ -467,7 +547,7 @@ function Profile() {
 
                 <input
                   value={city}
-                  onChange={(e) =>
+                  onChange={(e)=>
                     setCity(
                       e.target.value
                     )
@@ -477,7 +557,7 @@ function Profile() {
 
                 <textarea
                   value={bio}
-                  onChange={(e) =>
+                  onChange={(e)=>
                     setBio(
                       e.target.value
                     )
@@ -489,8 +569,13 @@ function Profile() {
                   onClick={
                     saveProfile
                   }
+                  disabled={
+                    loading
+                  }
                 >
-                  Save Profile
+                  {loading
+                    ? "Saving..."
+                    : "Save Profile"}
                 </button>
 
               </>
@@ -499,54 +584,21 @@ function Profile() {
 
               <div className="result">
 
-                <h2
-                  style={{
-                    marginTop: 0
-                  }}
-                >
+                <h2>
                   Account Details
                 </h2>
 
-                <p>
-                  <strong>Name:</strong>{" "}
-                  {name}
-                </p>
-
-                <p>
-                  <strong>Email:</strong>{" "}
-                  {email}
-                </p>
-
-                <p>
-                  <strong>Phone:</strong>{" "}
-                  {phone || "N/A"}
-                </p>
-
-                <p>
-                  <strong>City:</strong>{" "}
-                  {city || "N/A"}
-                </p>
-
-                <p>
-                  <strong>Joined:</strong>{" "}
-                  {joinedDate}
-                </p>
-
-                <p>
-                  <strong>Plan:</strong>{" "}
-                  {plan}
-                </p>
-
-                <p>
-                  <strong>Bio:</strong>{" "}
-                  {bio}
-                </p>
+                <p><strong>Name:</strong> {name}</p>
+                <p><strong>Email:</strong> {email}</p>
+                <p><strong>Phone:</strong> {phone || "N/A"}</p>
+                <p><strong>City:</strong> {city || "N/A"}</p>
+                <p><strong>Joined:</strong> {joinedDate}</p>
+                <p><strong>Plan:</strong> {plan}</p>
+                <p><strong>Bio:</strong> {bio}</p>
 
                 <button
                   onClick={() =>
-                    setEditing(
-                      true
-                    )
+                    setEditing(true)
                   }
                 >
                   Edit Profile
@@ -609,10 +661,12 @@ function Profile() {
               </button>
 
               <button
-                onClick={logout}
+                onClick={
+                  logout
+                }
                 style={{
                   background:
-                    "#ffffff",
+                    "#fff",
                   color:
                     "#173221",
                   border:
@@ -623,8 +677,6 @@ function Profile() {
               </button>
 
             </div>
-
-            {/* FOOTER */}
 
             <p
               style={{

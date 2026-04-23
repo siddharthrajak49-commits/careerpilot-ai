@@ -5,6 +5,7 @@ import React, {
   useEffect
 } from "react";
 
+import axios from "axios";
 import Swal from "sweetalert2";
 
 import {
@@ -28,123 +29,169 @@ function NotificationsCenter() {
     setNotifications
   ] = useState([]);
 
-  /* =========================
+  const [
+    loading,
+    setLoading
+  ] = useState(false);
+    /* =========================
      LOAD DATA
   ========================= */
 
   useEffect(() => {
 
-    const saved =
-      JSON.parse(
-        localStorage.getItem(
-          "careerpilot_notify"
-        )
-      ) || [];
-
-    if (
-      saved.length === 0
-    ) {
-
-      const demo = [
-        {
-          text:
-            "Resume analyzed successfully",
-          time:
-            "10:30 AM",
-          type:
-            "success"
-        },
-        {
-          text:
-            "Low ATS score detected",
-          time:
-            "11:00 AM",
-          type:
-            "warning"
-        },
-        {
-          text:
-            "New job matches available",
-          time:
-            "12:15 PM",
-          type:
-            "info"
-        }
-      ];
-
-      setNotifications(
-        demo
-      );
-
-      localStorage.setItem(
-        "careerpilot_notify",
-        JSON.stringify(
-          demo
-        )
-      );
-
-    } else {
-
-      setNotifications(
-        saved
-      );
-
-    }
+    loadNotifications();
 
   }, []);
 
-  /* =========================
-     CLEAR ALL
-  ========================= */
+  const loadNotifications =
+    async () => {
 
-  const clearAll =
-    () => {
+      try {
 
-      Swal.fire({
-        title:
-          "Clear Notifications?",
-        icon:
-          "warning",
-        showCancelButton: true,
-        confirmButtonText:
-          "Yes"
-      }).then(
-        (res) => {
+        setLoading(true);
 
-          if (
-            res.isConfirmed
-          ) {
+        const token =
+          localStorage.getItem(
+            "token"
+          );
 
-            setNotifications(
-              []
+        const res =
+          await axios.get(
+            "https://careerpilot-backend-rvv1.onrender.com/notifications",
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`
+              }
+            }
+          );
+
+        if (
+          res.data.items
+        ) {
+
+          const apiData =
+            res.data.items.map(
+              (item) => ({
+                text:
+                  item,
+                time:
+                  new Date().toLocaleTimeString(),
+                type:
+                  "info",
+                read:
+                  false
+              })
             );
 
-            localStorage.removeItem(
-              "careerpilot_notify"
-            );
+          setNotifications(
+            apiData
+          );
 
-          }
+          localStorage.setItem(
+            "careerpilot_notify",
+            JSON.stringify(
+              apiData
+            )
+          );
 
         }
-      );
+
+      } catch {
+
+        fallbackLocal();
+
+      } finally {
+
+        setLoading(false);
+
+      }
 
     };
-
-  /* =========================
-     REMOVE ONE
+      /* =========================
+     FALLBACK LOCAL
   ========================= */
 
-  const removeOne =
+  const fallbackLocal =
+    () => {
+
+      const saved =
+        JSON.parse(
+          localStorage.getItem(
+            "careerpilot_notify"
+          )
+        ) || [];
+
+      if (
+        saved.length === 0
+      ) {
+
+        const demo = [
+          {
+            text:
+              "Resume analyzed successfully",
+            time:
+              "10:30 AM",
+            type:
+              "success",
+            read:
+              false
+          },
+          {
+            text:
+              "Low ATS score detected",
+            time:
+              "11:00 AM",
+            type:
+              "warning",
+            read:
+              false
+          },
+          {
+            text:
+              "New job matches available",
+            time:
+              "12:15 PM",
+            type:
+              "info",
+            read:
+              true
+          }
+        ];
+
+        setNotifications(
+          demo
+        );
+
+        localStorage.setItem(
+          "careerpilot_notify",
+          JSON.stringify(
+            demo
+          )
+        );
+
+      } else {
+
+        setNotifications(
+          saved
+        );
+
+      }
+
+    };
+    
+      /* =========================
+     MARK READ
+  ========================= */
+
+  const markRead =
     (index) => {
 
       const updated =
-        notifications.filter(
-          (
-            _,
-            i
-          ) =>
-            i !== index
-        );
+        [...notifications];
+
+      updated[index].read =
+        true;
 
       setNotifications(
         updated
@@ -160,8 +207,14 @@ function NotificationsCenter() {
     };
 
   /* =========================
-     TYPE ICON
+     HELPERS
   ========================= */
+
+  const unreadCount =
+    notifications.filter(
+      (item) =>
+        !item.read
+    ).length;
 
   const getIcon = (
     type
@@ -181,9 +234,8 @@ function NotificationsCenter() {
 
     return "🔔";
   };
-
-  /* =========================
-     UI
+    /* =========================
+     UI START
   ========================= */
 
   return (
@@ -240,11 +292,24 @@ function NotificationsCenter() {
 
               </div>
 
+              <div className="statCard">
+
+                <span>🔴</span>
+
+                <h3>
+                  {unreadCount}
+                </h3>
+
+                <p>
+                  Unread
+                </p>
+
+              </div>
+
             </div>
 
           </div>
-
-          {/* MAIN */}
+                    {/* MAIN */}
 
           <div className="card">
 
@@ -268,6 +333,14 @@ function NotificationsCenter() {
               </button>
 
               <button
+                onClick={
+                  loadNotifications
+                }
+              >
+                Refresh
+              </button>
+
+              <button
                 onClick={() =>
                   navigate(
                     "/dashboard"
@@ -279,28 +352,28 @@ function NotificationsCenter() {
 
             </div>
 
-            {/* LIST */}
-
             <div className="result">
 
               <h2>
                 Recent Alerts
               </h2>
 
-              {notifications.length ===
-              0 ? (
+              {loading ? (
+
+                <p>
+                  Loading...
+                </p>
+
+              ) : notifications.length === 0 ? (
 
                 <div className="notifyEmpty">
-
                   No notifications found.
-
                 </div>
 
               ) : (
 
                 <ul className="notifyList">
-
-                  {notifications.map(
+                                      {notifications.map(
                     (
                       item,
                       index
@@ -308,6 +381,12 @@ function NotificationsCenter() {
 
                       <li
                         key={index}
+                        style={{
+                          opacity:
+                            item.read
+                              ? 0.65
+                              : 1
+                        }}
                       >
 
                         <div>
@@ -323,35 +402,59 @@ function NotificationsCenter() {
 
                           <div className="notifyTime">
 
-                            {
-                              item.time
-                            }
+                            {item.time}
 
                           </div>
 
                         </div>
 
-                        <button
-                          className="btnSm"
-                          onClick={() =>
-                            removeOne(
-                              index
-                            )
-                          }
+                        <div
+                          style={{
+                            display:
+                              "flex",
+                            gap: "8px"
+                          }}
                         >
-                          Remove
-                        </button>
+
+                          {!item.read && (
+
+                            <button
+                              className="btnSm"
+                              onClick={() =>
+                                markRead(
+                                  index
+                                )
+                              }
+                            >
+                              Read
+                            </button>
+
+                          )}
+
+                          <button
+                            className="btnSm"
+                            onClick={() =>
+                              removeOne(
+                                index
+                              )
+                            }
+                          >
+                            Delete
+                          </button>
+
+                        </div>
 
                       </li>
+
                     )
                   )}
 
                 </ul>
+
               )}
 
             </div>
-
-            {/* QUICK INFO */}
+                        {/* QUICK INFO */}
 
             <div className="result">
 
@@ -375,6 +478,10 @@ function NotificationsCenter() {
 
                 <li>
                   Premium updates
+                </li>
+
+                <li>
+                  Account security alerts
                 </li>
 
               </ul>
