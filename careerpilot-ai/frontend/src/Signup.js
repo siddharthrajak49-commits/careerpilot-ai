@@ -13,6 +13,15 @@ import {
   Link
 } from "react-router-dom";
 
+import {
+  signInWithPopup
+} from "firebase/auth";
+
+import {
+  auth,
+  provider
+} from "./firebase";
+
 function Signup() {
 
   const navigate =
@@ -35,6 +44,12 @@ function Signup() {
     confirmPassword,
     setConfirmPassword
   ] = useState("");
+
+  const [otp, setOtp] =
+    useState("");
+
+  const [otpSent, setOtpSent] =
+    useState(false);
 
   const [showPassword, setShowPassword] =
     useState(false);
@@ -76,8 +91,6 @@ function Signup() {
 
     let newErrors = {};
 
-    /* Name */
-
     if (!name.trim()) {
       newErrors.name =
         "Full name is required";
@@ -87,8 +100,6 @@ function Signup() {
       newErrors.name =
         "Minimum 3 characters";
     }
-
-    /* Email */
 
     if (!email.trim()) {
       newErrors.email =
@@ -102,8 +113,6 @@ function Signup() {
         "Invalid email format";
     }
 
-    /* Password */
-
     if (!password.trim()) {
       newErrors.password =
         "Password required";
@@ -114,8 +123,6 @@ function Signup() {
         "Minimum 6 characters";
     }
 
-    /* Confirm */
-
     if (
       confirmPassword !==
       password
@@ -123,8 +130,6 @@ function Signup() {
       newErrors.confirmPassword =
         "Passwords do not match";
     }
-
-    /* Terms */
 
     if (!agreeTerms) {
       newErrors.terms =
@@ -141,10 +146,10 @@ function Signup() {
   };
 
   /* =========================
-     SIGNUP API
+     SEND OTP
   ========================= */
 
-  const signupUser = async () => {
+  const sendOTP = async () => {
 
     if (!validateForm()) {
 
@@ -164,93 +169,185 @@ function Signup() {
       setLoading(true);
 
       await axios.post(
-        "https://careerpilot-backend-rvv1.onrender.com/signup",
-        {
-          name,
-          email,
-          password
-        }
+        "https://careerpilot-backend-rvv1.onrender.com/send-signup-otp",
+        { email }
       );
+
+      setOtpSent(true);
 
       Swal.fire({
         icon: "success",
         title:
-          "Signup Successful",
+          "OTP Sent",
         text:
-          "Your account has been created 🚀",
-        timer: 1600,
-        showConfirmButton: false
+          "Please check your Gmail inbox 🚀"
       });
 
-      localStorage.setItem(
-        "remember_email",
-        email
-      );
+    } catch {
 
-      setTimeout(() => {
-        navigate("/");
-      }, 1600);
-
-    } catch (error) {
-
-      if (
-        error.response
-      ) {
-
-        Swal.fire({
-          icon: "error",
-          title:
-            "Signup Failed",
-          text:
-            error.response.data
-              .detail ||
-            "Email already exists"
-        });
-
-      } else {
-
-        Swal.fire({
-          icon: "error",
-          title:
-            "Server Error",
-          text:
-            "Please try again later."
-        });
-
-      }
+      Swal.fire({
+        icon: "error",
+        title:
+          "Failed",
+        text:
+          "Unable to send OTP."
+      });
 
     } finally {
 
       setLoading(false);
 
     }
+
   };
+
+  /* =========================
+     VERIFY OTP
+  ========================= */
+
+  const verifyOTP =
+    async () => {
+
+      if (!otp.trim()) {
+
+        Swal.fire({
+          icon: "warning",
+          title:
+            "Enter OTP"
+        });
+
+        return;
+      }
+
+      try {
+
+        setLoading(true);
+
+        await axios.post(
+          "https://careerpilot-backend-rvv1.onrender.com/verify-signup-otp",
+          {
+            name,
+            email,
+            password,
+            otp
+          }
+        );
+
+        Swal.fire({
+          icon: "success",
+          title:
+            "Signup Successful",
+          text:
+            "Your account has been created 🚀",
+          timer: 1600,
+          showConfirmButton:
+            false
+        });
+
+        localStorage.setItem(
+          "remember_email",
+          email
+        );
+
+        setTimeout(() => {
+          navigate("/");
+        }, 1600);
+
+      } catch (error) {
+
+        Swal.fire({
+          icon: "error",
+          title:
+            "Verification Failed",
+          text:
+            error.response?.data
+              ?.detail ||
+            "Wrong OTP"
+        });
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
 
   /* =========================
      ENTER KEY
   ========================= */
 
   const handleEnter = (e) => {
+
     if (e.key === "Enter") {
-      signupUser();
+
+      if (!otpSent) {
+        sendOTP();
+      } else {
+        verifyOTP();
+      }
+
     }
+
   };
 
   /* =========================
-     GOOGLE SIGNUP UI
+     GOOGLE SIGNUP
   ========================= */
 
-  const googleSignup = () => {
+  const googleSignup =
+    async () => {
 
-    Swal.fire({
-      icon: "info",
-      title:
-        "Coming Soon",
-      text:
-        "Google Signup will be available soon."
-    });
+      try {
 
-  };
+        setLoading(true);
+
+        const result =
+          await signInWithPopup(
+            auth,
+            provider
+          );
+
+        const user =
+          result.user;
+
+        await axios.post(
+          "https://careerpilot-backend-rvv1.onrender.com/google-login",
+          {
+            name:
+              user.displayName,
+            email:
+              user.email,
+            photo:
+              user.photoURL || ""
+          }
+        );
+
+        Swal.fire({
+          icon: "success",
+          title:
+            "Google Signup Successful",
+          text:
+            "Login now to continue 🚀"
+        });
+
+        navigate("/");
+
+      } catch {
+
+        Swal.fire({
+          icon: "error",
+          title:
+            "Google Signup Failed"
+        });
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
 
   /* =========================
      UI
@@ -393,7 +490,7 @@ function Signup() {
           </small>
         )}
 
-        {/* Confirm Password */}
+        {/* Confirm */}
 
         <div
           style={{
@@ -513,11 +610,37 @@ function Signup() {
           </small>
         )}
 
+        {/* OTP UI */}
+
+        {otpSent && (
+
+          <input
+            type="text"
+            placeholder="Enter OTP"
+            value={otp}
+            onChange={(e) =>
+              setOtp(
+                e.target.value
+              )
+            }
+            onKeyDown={
+              handleEnter
+            }
+            style={{
+              marginTop:
+                "14px"
+            }}
+          />
+
+        )}
+
         {/* Signup */}
 
         <button
           onClick={
-            signupUser
+            otpSent
+              ? verifyOTP
+              : sendOTP
           }
           disabled={
             loading
@@ -525,7 +648,9 @@ function Signup() {
         >
           {loading
             ? "Please Wait..."
-            : "Signup Now"}
+            : otpSent
+            ? "Verify OTP"
+            : "Send OTP"}
         </button>
 
         {/* Divider */}
