@@ -1,5 +1,8 @@
 # main.py (CareerPilot Final Full Upgraded)
 from dotenv import load_dotenv
+import os
+import smtplib
+from email.mime.text import MIMEText
 load_dotenv()
 from fastapi import (
     FastAPI,
@@ -35,6 +38,7 @@ app = FastAPI(
     title="CareerPilot AI API",
     version="3.0.0"
 )
+otp_storage = {}
 
 
 # ==================================
@@ -95,10 +99,48 @@ class GoogleLoginData(BaseModel):
     email: str
     photo: str = ""
 
+class SendOTPData(BaseModel):
+    email: str
+
+class VerifyOTPData(BaseModel):
+    name: str
+    email: str
+    password: str
+    otp: str
+
 
 # ==================================
 # HELPERS
 # ==================================
+def send_otp_email(receiver_email, otp):
+
+    sender_email = os.getenv("EMAIL_USER")
+    sender_pass = os.getenv("EMAIL_PASS")
+
+    subject = "CareerPilot OTP Verification"
+
+    body = f"""
+Hello,
+
+Your CareerPilot verification OTP is:
+
+{otp}
+
+Valid for 10 minutes.
+
+Team CareerPilot AI
+"""
+
+    msg = MIMEText(body)
+    msg["Subject"] = subject
+    msg["From"] = sender_email
+    msg["To"] = receiver_email
+
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.starttls()
+    server.login(sender_email, sender_pass)
+    server.sendmail(sender_email, receiver_email, msg.as_string())
+    server.quit()
 
 def auth_email(
     authorization: str = Header(None)
@@ -138,42 +180,85 @@ def home():
         "version": "3.0.0"
     }
 
+@app.post("/send-signup-otp")
+def send_signup_otp(data: SendOTPData):
 
-# ==================================
-# SIGNUP
-# ==================================
+    otp = str(random.randint(100000, 999999))
+    otp_storage[data.email] = otp
 
-@app.post("/signup")
-def signup(data: SignupData):
+    send_otp_email(data.email, otp)
+
+    return {"message": "OTP sent successfully"}
+
+
+@app.post("/verify-signup-otp")
+def verify_signup_otp(data: VerifyOTPData):
+
+    saved_otp = otp_storage.get(data.email)
+
+    if not saved_otp:
+        raise HTTPException(status_code=400, detail="OTP expired")
+
+    if saved_otp != data.otp:
+        raise HTTPException(status_code=400, detail="Wrong OTP")
 
     db = SessionLocal()
 
-    exists = db.query(User).filter(
-        User.email == data.email
-    ).first()
+    exists = db.query(User).filter(User.email == data.email).first()
 
     if exists:
         db.close()
-        raise HTTPException(
-            status_code=400,
-            detail="Email already exists"
-        )
+        raise HTTPException(status_code=400, detail="Email already exists")
 
     user = User(
         name=data.name,
         email=data.email,
-        password=hash_password(
-            data.password
-        )
+        password=hash_password(data.password)
     )
 
     db.add(user)
     db.commit()
     db.close()
 
-    return {
-        "message": "Signup Successful"
-    }
+    del otp_storage[data.email]
+
+    return {"message": "Signup Successful"}
+
+# ==================================
+# SIGNUP
+# ==================================
+
+# @app.post("/signup")
+# def signup(data: SignupData):
+
+#     db = SessionLocal()
+
+#     exists = db.query(User).filter(
+#         User.email == data.email
+#     ).first()
+
+#     if exists:
+#         db.close()
+#         raise HTTPException(
+#             status_code=400,
+#             detail="Email already exists"
+#         )
+
+#     user = User(
+#         name=data.name,
+#         email=data.email,
+#         password=hash_password(
+#             data.password
+#         )
+#     )
+
+#     db.add(user)
+#     db.commit()
+#     db.close()
+
+#     return {
+#         "message": "Signup Successful"
+#     }
 
 
 # ==================================
@@ -608,3 +693,5 @@ def admin_stats():
         "premium_users": 39,
         "today_signups": 8
     }
+
+
