@@ -12,6 +12,7 @@ from fastapi import (
     Header
 )
 
+
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import random
@@ -24,7 +25,8 @@ from salary_model import predict_salary
 from database import (
     SessionLocal,
     User,
-    Report
+    Report,
+    func
 )
 
 from auth import (
@@ -695,3 +697,97 @@ def admin_stats():
     }
 
 
+# ==================================
+# ADMIN USERS LIST
+# ==================================
+
+@app.get("/admin/users")
+def admin_users():
+
+    db = SessionLocal()
+
+    users = db.query(User).order_by(
+        User.id.desc()
+    ).all()
+
+    data = []
+
+    for user in users:
+        data.append({
+            "id": user.id,
+            "name": user.name,
+            "email": user.email,
+            "plan": user.plan,
+            "created_at": str(user.created_at)
+        })
+
+    db.close()
+
+    return {"users": data}
+
+
+# ==================================
+# ADMIN DELETE USER
+# ==================================
+
+@app.delete("/admin/delete-user/{user_id}")
+def delete_user(user_id: int):
+
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    db.delete(user)
+    db.commit()
+    db.close()
+
+    return {
+        "message": "User deleted"
+    }
+
+
+# ==================================
+# ADMIN TOGGLE PLAN
+# ==================================
+
+@app.put("/admin/toggle-plan/{user_id}")
+def toggle_plan(user_id: int):
+
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.id == user_id
+    ).first()
+
+    if not user:
+        db.close()
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    user.plan = (
+        "Premium"
+        if user.plan == "Free"
+        else "Free"
+    )
+
+    db.commit()
+
+    plan = user.plan
+
+    db.close()
+
+    return {
+        "message": "Plan updated",
+        "plan": plan
+    }

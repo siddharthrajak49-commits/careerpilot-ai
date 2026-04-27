@@ -3,6 +3,7 @@
 import os
 from datetime import datetime
 
+
 from sqlalchemy import (
     create_engine,
     Column,
@@ -11,7 +12,8 @@ from sqlalchemy import (
     DateTime,
     Text,
     Boolean,
-    Float
+    Float,
+    func
 )
 
 from sqlalchemy.orm import (
