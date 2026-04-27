@@ -5,6 +5,7 @@ import React, {
   useEffect
 } from "react";
 
+import axios from "axios";
 import Swal from "sweetalert2";
 
 import {
@@ -31,12 +32,39 @@ function AdminDashboard() {
   const navigate =
     useNavigate();
 
+  const BASE_URL =
+    "https://careerpilot-backend-rvv1.onrender.com";
+
   /* =========================
      STATE
   ========================= */
 
   const [users, setUsers] =
     useState([]);
+
+  const [filteredUsers,
+    setFilteredUsers] =
+    useState([]);
+
+  const [recentUsers,
+    setRecentUsers] =
+    useState([]);
+
+  const [notifications,
+    setNotifications] =
+    useState([]);
+
+  const [search,
+    setSearch] =
+    useState("");
+
+  const [loading,
+    setLoading] =
+    useState(true);
+
+  const [exporting,
+    setExporting] =
+    useState(false);
 
   const [stats, setStats] =
     useState({
@@ -46,85 +74,292 @@ function AdminDashboard() {
       todayUsers: 0
     });
 
-  const [announcement, setAnnouncement] =
+  const [growthData,
+    setGrowthData] =
+    useState([]);
+
+  const [reportsData,
+    setReportsData] =
+    useState([]);
+
+  const [announcement,
+    setAnnouncement] =
     useState("");
 
   /* =========================
-     LOAD MOCK DATA
+     ADMIN SECURITY
   ========================= */
 
   useEffect(() => {
 
-    const demoUsers = [
-      {
-        id: 1,
-        name: "Siddharth",
-        email:
-          "sid@email.com",
-        plan: "Premium"
-      },
-      {
-        id: 2,
-        name: "Rahul",
-        email:
-          "rahul@email.com",
-        plan: "Free"
-      },
-      {
-        id: 3,
-        name: "Aman",
-        email:
-          "aman@email.com",
-        plan: "Premium"
-      },
-      {
-        id: 4,
-        name: "Priya",
-        email:
-          "priya@email.com",
-        plan: "Free"
-      }
-    ];
+    const token =
+      localStorage.getItem(
+        "token"
+      );
 
-    setUsers(demoUsers);
+    const email =
+      localStorage.getItem(
+        "email"
+      );
 
-    setStats({
-      totalUsers: 124,
-      premiumUsers: 48,
-      reports: 680,
-      todayUsers: 12
-    });
+    if (
+      !token ||
+      email !==
+      "admin@careerpilot.ai"
+    ) {
+
+      Swal.fire({
+        icon: "warning",
+        title:
+          "Access Denied",
+        text:
+          "Admin only area."
+      });
+
+      navigate("/");
+      return;
+    }
+
+    loadDashboard();
+    loadNotifications();
+
+  }, [navigate]);
+
+  /* =========================
+     AUTO REFRESH
+  ========================= */
+
+  useEffect(() => {
+
+    const interval =
+      setInterval(() => {
+
+        loadDashboard();
+        loadNotifications();
+
+      }, 15000);
+
+    return () =>
+      clearInterval(
+        interval
+      );
 
   }, []);
+
+  /* =========================
+     COMMON HEADERS
+  ========================= */
+
+  const authHeaders =
+    () => {
+
+      const token =
+        localStorage.getItem(
+          "token"
+        );
+
+      return {
+        Authorization:
+          `Bearer ${token}`
+      };
+
+    };
+
+  /* =========================
+     LOAD DASHBOARD
+  ========================= */
+
+  const loadDashboard =
+    async () => {
+
+      try {
+
+        setLoading(true);
+
+        const headers =
+          authHeaders();
+
+        const statsRes =
+          await axios.get(
+            `${BASE_URL}/admin/stats`,
+            { headers }
+          );
+
+        const usersRes =
+          await axios.get(
+            `${BASE_URL}/admin/users`,
+            { headers }
+          );
+
+        const chartRes =
+          await axios.get(
+            `${BASE_URL}/admin/chart-data`,
+            { headers }
+          );
+
+        const recentRes =
+          await axios.get(
+            `${BASE_URL}/admin/recent-signups`,
+            { headers }
+          );
+
+        const allUsers =
+          usersRes.data.users || [];
+
+        setStats({
+          totalUsers:
+            statsRes.data.users || 0,
+          premiumUsers:
+            statsRes.data.premium_users || 0,
+          reports:
+            statsRes.data.reports || 0,
+          todayUsers:
+            statsRes.data.today_signups || 0
+        });
+
+        setUsers(
+          allUsers
+        );
+
+        setFilteredUsers(
+          allUsers
+        );
+
+        setRecentUsers(
+          recentRes.data.recent_users || []
+        );
+
+        setGrowthData(
+          chartRes.data.growth || []
+        );
+
+        setReportsData(
+          chartRes.data.reports || []
+        );
+
+      } catch (error) {
+
+        localStorage.clear();
+        navigate("/");
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    };
+    // continued...
+
+  /* =========================
+     LIVE NOTIFICATIONS
+  ========================= */
+
+  const loadNotifications =
+    async () => {
+
+      try {
+
+        const headers =
+          authHeaders();
+
+        const res =
+          await axios.get(
+            `${BASE_URL}/admin/notifications`,
+            { headers }
+          );
+
+        setNotifications(
+          res.data.notifications || []
+        );
+
+      } catch {
+
+        setNotifications([]);
+
+      }
+
+    };
+
+  /* =========================
+     FAST SEARCH
+  ========================= */
+
+  useEffect(() => {
+
+    const keyword =
+      search
+        .toLowerCase()
+        .trim();
+
+    if (!keyword) {
+
+      setFilteredUsers(
+        users
+      );
+
+      return;
+    }
+
+    const result =
+      users.filter(
+        (item) =>
+          item.name
+            .toLowerCase()
+            .includes(
+              keyword
+            ) ||
+          item.email
+            .toLowerCase()
+            .includes(
+              keyword
+            ) ||
+          item.plan
+            .toLowerCase()
+            .includes(
+              keyword
+            )
+      );
+
+    setFilteredUsers(
+      result
+    );
+
+  }, [search, users]);
 
   /* =========================
      DELETE USER
   ========================= */
 
-  const deleteUser = (
-    id
-  ) => {
+  const deleteUser =
+    async (id) => {
 
-    Swal.fire({
-      icon: "warning",
-      title:
-        "Delete User?",
-      text:
-        "This action cannot be undone.",
-      showCancelButton: true,
-      confirmButtonText:
-        "Delete"
-    }).then((res) => {
+      const confirm =
+        await Swal.fire({
+          icon: "warning",
+          title:
+            "Delete User?",
+          text:
+            "This action cannot be undone.",
+          showCancelButton:
+            true,
+          confirmButtonText:
+            "Delete"
+        });
 
-      if (res.isConfirmed) {
+      if (
+        !confirm.isConfirmed
+      ) return;
 
-        const updated =
-          users.filter(
-            (item) =>
-              item.id !== id
-          );
+      try {
 
-        setUsers(updated);
+        await axios.delete(
+          `${BASE_URL}/admin/delete-user/${id}`,
+          {
+            headers:
+              authHeaders()
+          }
+        );
 
         Swal.fire({
           icon: "success",
@@ -134,20 +369,68 @@ function AdminDashboard() {
             "User removed successfully."
         });
 
+        loadDashboard();
+
+      } catch {
+
+        Swal.fire({
+          icon: "error",
+          title:
+            "Delete Failed"
+        });
+
       }
 
-    });
-
-  };
+    };
 
   /* =========================
-     SEND ANNOUNCEMENT
+     TOGGLE PLAN
+  ========================= */
+
+  const togglePlan =
+    async (id) => {
+
+      try {
+
+        await axios.put(
+          `${BASE_URL}/admin/toggle-plan/${id}`,
+          {},
+          {
+            headers:
+              authHeaders()
+          }
+        );
+
+        Swal.fire({
+          icon: "success",
+          title:
+            "Plan Updated"
+        });
+
+        loadDashboard();
+
+      } catch {
+
+        Swal.fire({
+          icon: "error",
+          title:
+            "Update Failed"
+        });
+
+      }
+
+    };
+
+  /* =========================
+     BROADCAST MESSAGE
   ========================= */
 
   const sendAnnouncement =
-    () => {
+    async () => {
 
-      if (!announcement) {
+      if (
+        !announcement.trim()
+      ) {
 
         Swal.fire({
           icon: "warning",
@@ -160,20 +443,112 @@ function AdminDashboard() {
         return;
       }
 
-      Swal.fire({
-        icon: "success",
-        title:
-          "Announcement Sent",
-        text:
-          announcement
-      });
+      try {
 
-      setAnnouncement("");
+        await axios.post(
+          `${BASE_URL}/admin/broadcast`,
+          {
+            message:
+              announcement
+          },
+          {
+            headers:
+              authHeaders()
+          }
+        );
+
+        Swal.fire({
+          icon: "success",
+          title:
+            "Broadcast Sent"
+        });
+
+        setAnnouncement("");
+
+        loadNotifications();
+
+      } catch {
+
+        Swal.fire({
+          icon: "error",
+          title:
+            "Broadcast Failed"
+        });
+
+      }
+
+    };
+    // continued...
+
+  /* =========================
+     EXPORT CSV
+  ========================= */
+
+  const exportUsersCSV =
+    async () => {
+
+      try {
+
+        setExporting(true);
+
+        let csv =
+`ID,Name,Email,Plan,Created At\n`;
+
+        users.forEach(
+          (item) => {
+
+            csv +=
+`${item.id},${item.name},${item.email},${item.plan},${item.created_at}\n`;
+
+          }
+        );
+
+        const blob =
+          new Blob(
+            [csv],
+            {
+              type:
+              "text/csv;charset=utf-8;"
+            }
+          );
+
+        const url =
+          window.URL
+            .createObjectURL(
+              blob
+            );
+
+        const link =
+          document.createElement(
+            "a"
+          );
+
+        link.href = url;
+
+        link.setAttribute(
+          "download",
+          "careerpilot_users.csv"
+        );
+
+        document.body
+          .appendChild(
+            link
+          );
+
+        link.click();
+
+        link.remove();
+
+      } finally {
+
+        setExporting(false);
+
+      }
 
     };
 
   /* =========================
-     LOGOUT ADMIN
+     LOGOUT
   ========================= */
 
   const logoutAdmin =
@@ -186,59 +561,21 @@ function AdminDashboard() {
     };
 
   /* =========================
-     CHART DATA
-  ========================= */
-
-  const growthData = [
-    {
-      month: "Jan",
-      users: 20
-    },
-    {
-      month: "Feb",
-      users: 35
-    },
-    {
-      month: "Mar",
-      users: 55
-    },
-    {
-      month: "Apr",
-      users: 70
-    },
-    {
-      month: "May",
-      users: 92
-    },
-    {
-      month: "Jun",
-      users: 124
-    }
-  ];
-
-  const reportsData = [
-    {
-      name: "Reports",
-      count: 680
-    },
-    {
-      name: "Premium",
-      count: 48
-    },
-    {
-      name: "Today",
-      count: 12
-    }
-  ];
-
-  /* =========================
-     UI
+     UI START
   ========================= */
 
   return (
     <div className="mainAppTheme">
 
-      <div className="container dashboardWrap">
+      <div
+        className="container dashboardWrap"
+        style={{
+          background:
+            "linear-gradient(180deg,#08110b,#122118)",
+          minHeight:
+            "100vh"
+        }}
+      >
 
         <div
           style={{
@@ -256,7 +593,7 @@ function AdminDashboard() {
             <div className="heroLeft">
 
               <span className="heroTag">
-                🛡️ Admin Panel
+                🛡️ Premium Admin
               </span>
 
               <h2 className="heroTitle">
@@ -264,9 +601,9 @@ function AdminDashboard() {
               </h2>
 
               <p className="heroText">
-                Control users,
-                reports, growth and
-                platform activities.
+                Real users, charts,
+                reports and business
+                control center.
               </p>
 
             </div>
@@ -282,7 +619,7 @@ function AdminDashboard() {
                 </h3>
 
                 <p>
-                  Startup Control
+                  SaaS Control Room
                 </p>
 
               </div>
@@ -300,288 +637,347 @@ function AdminDashboard() {
             </h1>
 
             <p className="subtitle">
-              Monitor business growth
-              and manage users.
+              Full real-time analytics
+              and user management.
             </p>
 
-            {/* STATS */}
+            {loading ? (
 
-            <div className="statsGrid">
+              <p>
+                Loading Dashboard...
+              </p>
 
-              <div className="statCard">
-                <span>👥</span>
-                <h3>
-                  {
-                    stats.totalUsers
-                  }
-                </h3>
-                <p>
-                  Total Users
-                </p>
-              </div>
+            ) : (
 
-              <div className="statCard">
-                <span>⭐</span>
-                <h3>
-                  {
-                    stats.premiumUsers
-                  }
-                </h3>
-                <p>
-                  Premium Users
-                </p>
-              </div>
+              <>// continued...
 
-              <div className="statCard">
-                <span>📄</span>
-                <h3>
-                  {
-                    stats.reports
-                  }
-                </h3>
-                <p>
-                  Reports Generated
-                </p>
-              </div>
+                {/* STATS */}
 
-              <div className="statCard">
-                <span>📈</span>
-                <h3>
-                  {
-                    stats.todayUsers
-                  }
-                </h3>
-                <p>
-                  New Today
-                </p>
-              </div>
+                <div className="statsGrid">
 
-            </div>
+                  <div className="statCard">
+                    <span>👥</span>
+                    <h3>{stats.totalUsers}</h3>
+                    <p>Total Users</p>
+                  </div>
 
-            {/* CHARTS */}
+                  <div className="statCard">
+                    <span>⭐</span>
+                    <h3>{stats.premiumUsers}</h3>
+                    <p>Premium Users</p>
+                  </div>
 
-            <div className="chartsGrid">
+                  <div className="statCard">
+                    <span>📄</span>
+                    <h3>{stats.reports}</h3>
+                    <p>Reports</p>
+                  </div>
 
-              <div className="result">
+                  <div className="statCard">
+                    <span>📈</span>
+                    <h3>{stats.todayUsers}</h3>
+                    <p>Today Users</p>
+                  </div>
 
-                <h2>
-                  User Growth
-                </h2>
+                </div>
 
-                <ResponsiveContainer
-                  width="100%"
-                  height={260}
+                {/* TOP ACTIONS */}
+
+                <div
+                  className="btnRow"
+                  style={{
+                    marginTop:"16px"
+                  }}
                 >
 
-                  <LineChart
-                    data={
-                      growthData
+                  <button
+                    onClick={
+                      exportUsersCSV
+                    }
+                    disabled={
+                      exporting
                     }
                   >
+                    {
+                      exporting
+                      ? "Exporting..."
+                      : "Export CSV"
+                    }
+                  </button>
 
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                    />
-
-                    <XAxis
-                      dataKey="month"
-                    />
-
-                    <YAxis />
-
-                    <Tooltip />
-
-                    <Line
-                      type="monotone"
-                      dataKey="users"
-                      stroke="#7cd67f"
-                      strokeWidth={3}
-                    />
-
-                  </LineChart>
-
-                </ResponsiveContainer>
-
-              </div>
-
-              <div className="result">
-
-                <h2>
-                  Reports Stats
-                </h2>
-
-                <ResponsiveContainer
-                  width="100%"
-                  height={260}
-                >
-
-                  <BarChart
-                    data={
-                      reportsData
+                  <button
+                    onClick={
+                      loadDashboard
                     }
                   >
+                    Refresh
+                  </button>
 
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                    />
+                </div>
 
-                    <XAxis
-                      dataKey="name"
-                    />
+                {/* CHARTS */}
 
-                    <YAxis />
+                <div className="chartsGrid">
 
-                    <Tooltip />
+                  <div className="result">
 
-                    <Bar
-                      dataKey="count"
-                      fill="#8fdcff"
-                      radius={[
-                        8, 8, 0, 0
-                      ]}
-                    />
+                    <h2>User Growth</h2>
 
-                  </BarChart>
-
-                </ResponsiveContainer>
-
-              </div>
-
-            </div>
-
-            {/* ANNOUNCEMENT */}
-
-            <div className="result">
-
-              <h2>
-                📢 Broadcast Message
-              </h2>
-
-              <textarea
-                rows="4"
-                placeholder="Write announcement for all users..."
-                value={
-                  announcement
-                }
-                onChange={(e) =>
-                  setAnnouncement(
-                    e.target.value
-                  )
-                }
-              />
-
-              <button
-                onClick={
-                  sendAnnouncement
-                }
-              >
-                Send Announcement
-              </button>
-
-            </div>
-
-            {/* USERS */}
-
-            <div className="result">
-
-              <h2>
-                👥 User Management
-              </h2>
-
-              {users.map(
-                (user) => (
-
-                  <div
-                    key={user.id}
-                    className="softPanel"
-                    style={{
-                      marginTop:
-                        "14px"
-                    }}
-                  >
-
-                    <p>
-                      <strong>
-                        {user.name}
-                      </strong>
-                    </p>
-
-                    <p>
-                      {user.email}
-                    </p>
-
-                    <p>
-                      Plan:
-                      {" "}
-                      {user.plan}
-                    </p>
-
-                    <button
-                      className="btnSm"
-                      onClick={() =>
-                        deleteUser(
-                          user.id
-                        )
-                      }
-                      style={{
-                        marginTop:
-                          "10px",
-                        background:
-                          "#fff2f2",
-                        color:
-                          "#e03131"
-                      }}
+                    <ResponsiveContainer
+                      width="100%"
+                      height={260}
                     >
-                      Delete User
-                    </button>
+                      <LineChart
+                        data={growthData}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="month" />
+                        <YAxis />
+                        <Tooltip />
+                        <Line
+                          type="monotone"
+                          dataKey="users"
+                          stroke="#7cd67f"
+                          strokeWidth={3}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
 
                   </div>
 
-                )
-              )}
+                  <div className="result">
 
-            </div>
+                    <h2>Reports Stats</h2>
 
-            {/* ACTIONS */}
+                    <ResponsiveContainer
+                      width="100%"
+                      height={260}
+                    >
+                      <BarChart
+                        data={reportsData}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" />
+                        <YAxis />
+                        <Tooltip />
+                        <Bar
+                          dataKey="count"
+                          fill="#8fdcff"
+                          radius={[8,8,0,0]}
+                        />
+                      </BarChart>
+                    </ResponsiveContainer>
 
-            <div className="btnRow">
+                  </div>
 
-              <button
-                onClick={() =>
-                  navigate(
-                    "/dashboard"
-                  )
-                }
-              >
-                User Dashboard
-              </button>
+                </div>
 
-              <button
-                onClick={
-                  logoutAdmin
-                }
-              >
-                Logout
-              </button>
+                {/* LIVE NOTIFICATIONS */}
 
-            </div>
+                <div className="result">
 
-            {/* FOOTER */}
+                  <h2>
+                    🔔 Live Notifications
+                  </h2>
+
+                  {notifications.map(
+                    (item) => (
+                      <div
+                        key={item.id}
+                        className="softPanel"
+                        style={{
+                          marginTop:"10px"
+                        }}
+                      >
+                        <p>{item.text}</p>
+                        <small>{item.time}</small>
+                      </div>
+                    )
+                  )}
+
+                </div>
+
+                {/* BROADCAST */}
+
+                <div className="result">
+
+                  <h2>
+                    📢 Broadcast Message
+                  </h2>
+
+                  <textarea
+                    rows="4"
+                    placeholder="Write announcement for all users..."
+                    value={announcement}
+                    onChange={(e)=>
+                      setAnnouncement(
+                        e.target.value
+                      )
+                    }
+                  />
+
+                  <button
+                    onClick={
+                      sendAnnouncement
+                    }
+                  >
+                    Send Broadcast
+                  </button>
+
+                </div>
+
+                {/* RECENT SIGNUPS */}
+
+                <div className="result">
+
+                  <h2>
+                    🆕 Recent Signups
+                  </h2>
+
+                  {recentUsers.map(
+                    (user)=>(
+                      <div
+                        key={user.id}
+                        className="softPanel"
+                        style={{
+                          marginTop:"10px"
+                        }}
+                      >
+                        <p>
+                          <strong>
+                            {user.name}
+                          </strong>
+                        </p>
+                        <p>{user.email}</p>
+                        <small>
+                          {user.created_at}
+                        </small>
+                      </div>
+                    )
+                  )}
+
+                </div>
+
+                {/* USER MANAGEMENT */}
+
+                <div className="result">
+
+                  <h2>
+                    👥 User Management
+                  </h2>
+
+                  <input
+                    type="text"
+                    placeholder="Search user..."
+                    value={search}
+                    onChange={(e)=>
+                      setSearch(
+                        e.target.value
+                      )
+                    }
+                  />
+
+                  {filteredUsers.map(
+                    (user)=>(
+                      <div
+                        key={user.id}
+                        className="softPanel"
+                        style={{
+                          marginTop:"14px"
+                        }}
+                      >
+                        <p>
+                          <strong>
+                            {user.name}
+                          </strong>
+                        </p>
+
+                        <p>{user.email}</p>
+
+                        <p>
+                          Plan: {user.plan}
+                        </p>
+
+                        <div
+                          style={{
+                            display:"flex",
+                            gap:"10px",
+                            flexWrap:"wrap",
+                            marginTop:"10px"
+                          }}
+                        >
+
+                          <button
+                            className="btnSm"
+                            onClick={()=>
+                              togglePlan(
+                                user.id
+                              )
+                            }
+                          >
+                            Toggle Plan
+                          </button>
+
+                          <button
+                            className="btnSm"
+                            onClick={()=>
+                              deleteUser(
+                                user.id
+                              )
+                            }
+                            style={{
+                              background:"#fff2f2",
+                              color:"#e03131"
+                            }}
+                          >
+                            Delete User
+                          </button>
+
+                        </div>
+                      </div>
+                    )
+                  )}
+
+                </div>
+
+                {/* FOOTER ACTIONS */}
+
+                <div className="btnRow">
+
+                  <button
+                    onClick={()=>
+                      navigate(
+                        "/dashboard"
+                      )
+                    }
+                  >
+                    User Dashboard
+                  </button>
+
+                  <button
+                    onClick={
+                      logoutAdmin
+                    }
+                  >
+                    Logout
+                  </button>
+
+                </div>
+
+              </>
+
+            )}
 
             <p
               style={{
-                textAlign:
-                  "center",
-                marginTop:
-                  "18px",
-                color:
-                  "#94a398",
-                fontSize:
-                  "13px"
+                textAlign:"center",
+                marginTop:"18px",
+                color:"#94a398",
+                fontSize:"13px"
               }}
             >
               CareerPilot Admin •
-              Full Control Center
+              Premium Control Center
             </p>
 
           </div>

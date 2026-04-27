@@ -31,9 +31,6 @@ function ForgotPassword() {
   const [otp, setOtp] =
     useState("");
 
-  const [serverOtp, setServerOtp] =
-    useState("");
-
   const [password, setPassword] =
     useState("");
 
@@ -49,6 +46,15 @@ function ForgotPassword() {
 
   const [timer, setTimer] =
     useState(30);
+
+  const [showPassword,
+    setShowPassword] =
+    useState(false);
+
+  const [
+    showConfirmPassword,
+    setShowConfirmPassword
+  ] = useState(false);
 
   /* =========================
      TIMER
@@ -134,20 +140,11 @@ function ForgotPassword() {
 
         setLoading(true);
 
-        const res =
-          await axios.post(
-            "https://careerpilot-backend-rvv1.onrender.com/forgot-password",
-            {
-              email
-            }
-          );
-
-        const otpCode =
-          res.data.otp ||
-          "123456";
-
-        setServerOtp(
-          otpCode
+        await axios.post(
+          "https://careerpilot-backend-rvv1.onrender.com/send-reset-otp",
+          {
+            email
+          }
         );
 
         setOtpSent(true);
@@ -159,7 +156,7 @@ function ForgotPassword() {
           title:
             "OTP Sent",
           text:
-            "Verification code sent successfully.",
+            "Verification code sent to Gmail.",
           timer: 1600,
           showConfirmButton:
             false
@@ -167,26 +164,12 @@ function ForgotPassword() {
 
       } catch {
 
-        const fakeOtp =
-          "123456";
-
-        setServerOtp(
-          fakeOtp
-        );
-
-        setOtpSent(true);
-        setTimer(30);
-        setStep(2);
-
         Swal.fire({
-          icon: "success",
+          icon: "error",
           title:
-            "OTP Sent",
+            "Failed",
           text:
-            "Use demo OTP: 123456",
-          timer: 1800,
-          showConfirmButton:
-            false
+            "Unable to send OTP."
         });
 
       } finally {
@@ -202,7 +185,7 @@ function ForgotPassword() {
   ========================= */
 
   const verifyOtp =
-    () => {
+    async () => {
 
       if (!otp.trim()) {
 
@@ -215,10 +198,17 @@ function ForgotPassword() {
         return;
       }
 
-      if (
-        otp ===
-        serverOtp
-      ) {
+      try {
+
+        setLoading(true);
+
+        await axios.post(
+          "https://careerpilot-backend-rvv1.onrender.com/verify-reset-otp",
+          {
+            email,
+            otp
+          }
+        );
 
         Swal.fire({
           icon: "success",
@@ -231,13 +221,17 @@ function ForgotPassword() {
 
         setStep(3);
 
-      } else {
+      } catch {
 
         Swal.fire({
           icon: "error",
           title:
             "Wrong OTP"
         });
+
+      } finally {
+
+        setLoading(false);
 
       }
 
@@ -305,14 +299,11 @@ function ForgotPassword() {
       } catch {
 
         Swal.fire({
-          icon: "success",
+          icon: "error",
           title:
-            "Password Updated",
+            "Failed",
           text:
-            "Demo mode success.",
-          timer: 1700,
-          showConfirmButton:
-            false
+            "Please try again."
         });
 
       } finally {
@@ -340,6 +331,30 @@ function ForgotPassword() {
         return;
 
       sendResetLink();
+
+    };
+
+  /* =========================
+     ENTER KEY
+  ========================= */
+
+  const handleEnter =
+    (e) => {
+
+      if (
+        e.key === "Enter"
+      ) {
+
+        if (step === 1)
+          sendResetLink();
+
+        if (step === 2)
+          verifyOtp();
+
+        if (step === 3)
+          resetPassword();
+
+      }
 
     };
 
@@ -400,6 +415,9 @@ function ForgotPassword() {
                 setEmail(
                   e.target.value
                 )
+              }
+              onKeyDown={
+                handleEnter
               }
             />
 
@@ -464,14 +482,22 @@ function ForgotPassword() {
                   e.target.value
                 )
               }
+              onKeyDown={
+                handleEnter
+              }
             />
 
             <button
               onClick={
                 verifyOtp
               }
+              disabled={
+                loading
+              }
             >
-              Verify OTP
+              {loading
+                ? "Verifying..."
+                : "Verify OTP"}
             </button>
 
             <button
@@ -505,29 +531,113 @@ function ForgotPassword() {
         {step === 3 && (
           <>
 
-            <input
-              type="password"
-              placeholder="New Password"
-              value={password}
-              onChange={(e) =>
-                setPassword(
-                  e.target.value
-                )
-              }
-            />
+            <div
+              style={{
+                position:
+                  "relative"
+              }}
+            >
 
-            <input
-              type="password"
-              placeholder="Confirm Password"
-              value={
-                confirmPassword
-              }
-              onChange={(e) =>
-                setConfirmPassword(
-                  e.target.value
-                )
-              }
-            />
+              <input
+                type={
+                  showPassword
+                    ? "text"
+                    : "password"
+                }
+                placeholder="New Password"
+                value={password}
+                onChange={(e) =>
+                  setPassword(
+                    e.target.value
+                  )
+                }
+                onKeyDown={
+                  handleEnter
+                }
+              />
+
+              <span
+                onClick={() =>
+                  setShowPassword(
+                    !showPassword
+                  )
+                }
+                style={{
+                  position:
+                    "absolute",
+                  right: "15px",
+                  top: "28px",
+                  cursor:
+                    "pointer",
+                  fontSize:
+                    "14px",
+                  color:
+                    "#2f9e44",
+                  fontWeight:
+                    "700"
+                }}
+              >
+                {showPassword
+                  ? "Hide"
+                  : "Show"}
+              </span>
+
+            </div>
+
+            <div
+              style={{
+                position:
+                  "relative"
+              }}
+            >
+
+              <input
+                type={
+                  showConfirmPassword
+                    ? "text"
+                    : "password"
+                }
+                placeholder="Confirm Password"
+                value={
+                  confirmPassword
+                }
+                onChange={(e) =>
+                  setConfirmPassword(
+                    e.target.value
+                  )
+                }
+                onKeyDown={
+                  handleEnter
+                }
+              />
+
+              <span
+                onClick={() =>
+                  setShowConfirmPassword(
+                    !showConfirmPassword
+                  )
+                }
+                style={{
+                  position:
+                    "absolute",
+                  right: "15px",
+                  top: "28px",
+                  cursor:
+                    "pointer",
+                  fontSize:
+                    "14px",
+                  color:
+                    "#2f9e44",
+                  fontWeight:
+                    "700"
+                }}
+              >
+                {showConfirmPassword
+                  ? "Hide"
+                  : "Show"}
+              </span>
+
+            </div>
 
             <button
               onClick={
