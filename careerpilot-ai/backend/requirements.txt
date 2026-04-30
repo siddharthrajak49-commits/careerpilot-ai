@@ -1,38 +1,46 @@
-# requirements.txt
-# CareerPilot AI Backend Final Production Version
 
+# Core Backend
 fastapi>=0.110.0
 uvicorn[standard]>=0.27.0
+gunicorn>=21.2.0
 python-multipart>=0.0.9
+python-dotenv>=1.0.1
+aiofiles>=23.0.0
 
-# Data / ML
-pandas>=2.0.0
+# Database
+sqlalchemy>=2.0.0
+psycopg2-binary>=2.9.9
+
+# Validation / Schemas
+pydantic>=2.0.0
+email-validator>=2.0.0
+
+# Security / Auth
+python-jose[cryptography]>=3.3.0
+passlib[bcrypt]>=1.7.4
+bcrypt>=4.1.2
+
+# AI / ML
 numpy>=1.26.0
+pandas>=2.0.0
 scikit-learn>=1.3.0
 joblib>=1.3.0
+google-generativeai>=0.8.0
 
 # Resume Parsing
 PyPDF2>=3.0.1
 python-docx>=1.1.0
 
-# Database
-sqlalchemy>=2.0.0
-
-# Authentication / Security
-python-jose[cryptography]>=3.3.0
-passlib[bcrypt]>=1.7.4
-bcrypt>=4.1.2
-
-# Validation
-pydantic>=2.0.0
-email-validator>=2.0.0
-
-# Utilities
-aiofiles>=23.0.0
+# HTTP Requests / APIs
 requests>=2.31.0
+httpx>=0.27.0
+
+# Cloudinary Uploads
+cloudinary>=1.39.0
+
+# Email / OTP Support
+secure-smtplib>=0.1.1
 
 # Optional Production Helpers
-gunicorn>=21.2.0
-
-psycopg2-binary>=2.9.9
-python-dotenv>=1.0.1
+jinja2>=3.1.3
+itsdangerous>=2.1.2
