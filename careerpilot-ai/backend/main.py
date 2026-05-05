@@ -14,6 +14,7 @@ from database import OTP
 from datetime import timedelta
 from datetime import datetime
 from email.mime.text import MIMEText
+otp_storage = {}
 
 from fastapi import (
     FastAPI,
@@ -95,18 +96,6 @@ app = FastAPI(
     version="7.0.0"
 )
 
-otp_storage[email] = {
-    "otp": otp,
-    "time": datetime.utcnow()
-}
-record = otp_storage.get(email)
-
-if not record:
-    raise HTTPException(...)
-
-if datetime.utcnow() - record["time"] > timedelta(minutes=10):
-    del otp_storage[email]
-    raise HTTPException(detail="OTP expired")
 
 # ==========================================================
 # CORS
@@ -489,7 +478,10 @@ def send_signup_otp(data: SendOTPData):
         random.randint(100000, 999999)
     )
 
-    otp_storage[data.email] = otp
+    otp_storage[data.email] = {
+        "otp": otp,
+        "time": datetime.utcnow()
+        }
 
     send_otp_email(
         data.email,
@@ -506,17 +498,23 @@ def verify_signup_otp(
     data: VerifyOTPData
 ):
 
-    saved_otp = otp_storage.get(
-        data.email
-    )
+    record = otp_storage.get(data.email)
 
-    if not saved_otp:
+    if not record:
+        raise HTTPException(
+            status_code=400,
+            detail="OTP expired"
+        )
+    # ⏳ EXPIRY CHECK (10 min)
+    if datetime.utcnow() - record["time"] > timedelta(minutes=10):
+        del otp_storage[data.email]
         raise HTTPException(
             status_code=400,
             detail="OTP expired"
         )
 
-    if saved_otp != data.otp:
+     # ❌ WRONG OTP
+    if record["otp"] != data.otp:
         raise HTTPException(
             status_code=400,
             detail="Wrong OTP"
@@ -800,7 +798,10 @@ def forgot_password(
         )
     )
 
-    otp_storage[data.email] = otp
+    otp_storage[data.email] = {
+        "otp": otp,
+        "time": datetime.utcnow()
+        }
 
     send_otp_email(
         data.email,
@@ -817,17 +818,23 @@ def reset_password(
     data: ResetPasswordData
 ):
 
-    saved_otp = otp_storage.get(
-        data.email
-    )
+    record = otp_storage.get(data.email)
 
-    if not saved_otp:
+    if not record:
+        raise HTTPException(
+            status_code=400,
+            detail="OTP expired"
+        )
+    # ⏳ EXPIRY CHECK (10 min)
+    if datetime.utcnow() - record["time"] > timedelta(minutes=10):
+        del otp_storage[data.email]
         raise HTTPException(
             status_code=400,
             detail="OTP expired"
         )
 
-    if saved_otp != data.otp:
+     # ❌ WRONG OTP 
+    if record["otp"] != data.otp:
         raise HTTPException(
             status_code=400,
             detail="Wrong OTP"
