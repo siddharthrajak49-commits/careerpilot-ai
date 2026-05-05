@@ -188,7 +188,7 @@ class Report(Base):
     )
 
     ats = Column(
-        Integer(20),
+        Integer,
         default=""
     )
 
