@@ -1,4 +1,4 @@
- // src/Dashboard.js
+// src/Dashboard.js
 
 import React, { useState, useEffect } from "react";
 import { api } from "./api";
@@ -70,6 +70,25 @@ function Dashboard() {
     }
   };
 
+  /* ========================= PDF DOWNLOAD (FIX ADDED) ========================= */
+
+  const downloadPDF = () => {
+    const input = document.getElementById("report");
+    if (!input) return;
+
+    html2canvas(input).then((canvas) => {
+      const imgData = canvas.toDataURL("image/png");
+
+      const pdf = new jsPDF("p", "mm", "a4");
+
+      const width = 190;
+      const height = (canvas.height * width) / canvas.width;
+
+      pdf.addImage(imgData, "PNG", 10, 10, width, height);
+      pdf.save("CareerPilot_Report.pdf");
+    });
+  };
+
   /* ========================= API CALLS ========================= */
 
   const fetchUser = async () => {
@@ -95,7 +114,6 @@ function Dashboard() {
       const res = await api("/dashboard/stats", "GET", null, token);
       setTotalReports(res?.reports || history.length);
     } catch {
-      // fallback
       setTotalReports(history.length);
     }
   };
@@ -111,7 +129,6 @@ function Dashboard() {
       }
 
     } catch {
-      // fallback local
       setNotifications(safeParse("careerpilot_notify"));
     }
   };
@@ -219,19 +236,17 @@ function Dashboard() {
       JSON.stringify(updated)
     );
 
-    // 🔥 OLD FEATURES BACK
     updateAvgATS(updated);
     fetchStats();
-
   };
-    /* ========================= FILE ========================= */
+
+  /* ========================= FILE ========================= */
 
   const handleFileChange = (e) => {
-    const selected = e.target.files[0];
 
+    const selected = e.target.files[0];
     if (!selected) return;
 
-    // ✅ FILE VALIDATION (NEW)
     const allowedTypes = [
       "application/pdf",
       "application/msword",
@@ -288,8 +303,7 @@ function Dashboard() {
     return () => clearInterval(timer);
 
   }, [result]);
-
-  /* ========================= ANALYZE RESUME ========================= */
+    /* ========================= ANALYZE RESUME ========================= */
 
   const uploadResume = async () => {
 
@@ -315,13 +329,10 @@ function Dashboard() {
         throw new Error(data?.detail || "Analysis failed");
       }
 
-      // ✅ SET RESULT
       setResult(data);
 
-      // ✅ SAVE HISTORY
       saveToHistory(data);
 
-      // ✅ SMART NOTIFICATIONS (OLD + NEW MERGE)
       if (data.ats_score < 50) {
         addNotification("🚨 Very Low ATS score detected");
       } else if (data.ats_score < 70) {
@@ -330,7 +341,6 @@ function Dashboard() {
         addNotification("✅ Strong ATS score generated");
       }
 
-      // ✅ SUCCESS POPUP
       Swal.fire({
         icon: "success",
         title: "Analysis Complete 🚀",
@@ -473,7 +483,8 @@ ${res.result}
   };
 
   const previousATS = getLastATS();
-    /* ========================= GREETING ========================= */
+
+  /* ========================= GREETING ========================= */
 
   const hour = new Date().getHours();
 
@@ -488,8 +499,6 @@ ${res.result}
 
   return (
     <div className="mainAppTheme">
-
-      {/* ================= LOADER ================= */}
 
       {loading && (
         <div className="loaderOverlay">
@@ -517,7 +526,7 @@ ${res.result}
 
           <Navbar />
 
-          {/* ================= HERO ================= */}
+          {/* HERO */}
 
           <div className="result heroBanner">
 
@@ -566,7 +575,7 @@ ${res.result}
 
           </div>
 
-          {/* ================= MAIN ================= */}
+          {/* MAIN CARD */}
 
           <div className="card">
 
@@ -576,7 +585,7 @@ ${res.result}
               Upload your resume and get AI-powered insights.
             </p>
 
-            {/* ================= STATS ================= */}
+            {/* STATS */}
 
             <div className="statsGrid">
 
@@ -606,7 +615,7 @@ ${res.result}
 
             </div>
 
-            {/* ================= UPLOAD ================= */}
+            {/* UPLOAD */}
 
             <div className="uploadBox">
 
@@ -634,7 +643,7 @@ ${res.result}
 
             </div>
 
-            {/* ================= FILE PREVIEW ================= */}
+            {/* PREVIEW */}
 
             {file && (
 
@@ -650,7 +659,7 @@ ${res.result}
 
             )}
 
-            {/* ================= EMPTY STATE ================= */}
+            {/* EMPTY */}
 
             {!result && (
 
@@ -668,13 +677,10 @@ ${res.result}
 
             )}
 
-            {/* ================= RESULT ================= */}
+            {/* RESULT */}
 
             {result && (
               <>
-
-                {/* ===== RESULT STATS ===== */}
-
                 <div className="statsGrid">
 
                   <div className="statCard">
@@ -703,8 +709,6 @@ ${res.result}
 
                 </div>
 
-                {/* ===== ATS COMPARISON ===== */}
-
                 {previousATS && (
 
                   <div className="result">
@@ -721,38 +725,6 @@ ${res.result}
 
                 )}
 
-                {/* ===== AI SUGGESTIONS ===== */}
-
-                <div className="result">
-
-                  <h2>🤖 AI Suggestions</h2>
-
-                  <ul>
-                    <li>Add strong projects</li>
-                    <li>Use action verbs</li>
-                    <li>Optimize keywords</li>
-                    <li>Highlight achievements</li>
-                  </ul>
-
-                </div>
-
-                {/* ===== JOB MATCHES ===== */}
-
-                <div className="result">
-
-                  <h2>💼 Job Matches</h2>
-
-                  <ul>
-                    <li>Frontend Developer</li>
-                    <li>React Developer</li>
-                    <li>Software Engineer</li>
-                    <li>Web Developer</li>
-                  </ul>
-
-                </div>
-
-                {/* ===== REPORT ===== */}
-
                 <div className="result" id="report">
 
                   <h2>📌 Detailed Report</h2>
@@ -761,20 +733,6 @@ ${res.result}
                   <ul>
                     {result.missing_skills?.map((s, i) => (
                       <li key={i}>{s}</li>
-                    ))}
-                  </ul>
-
-                  <h3>Resume Tips</h3>
-                  <ul>
-                    {result.tips?.map((t, i) => (
-                      <li key={i}>{t}</li>
-                    ))}
-                  </ul>
-
-                  <h3>Interview Questions</h3>
-                  <ul>
-                    {result.interview_questions?.map((q, i) => (
-                      <li key={i}>{q}</li>
                     ))}
                   </ul>
 
@@ -800,13 +758,9 @@ ${res.result}
 
                 </div>
 
-              </>
-            )}
-                            {/* ================= CHARTS ================= */}
+                {/* ✅ FIXED — ALL BELOW INSIDE RESULT */}
 
                 <div className="chartsGrid">
-
-                  {/* ===== PIE ===== */}
 
                   <div className="result">
 
@@ -814,36 +768,29 @@ ${res.result}
 
                     <ResponsiveContainer width="100%" height={260}>
                       <PieChart>
-
                         <Pie
                           data={[
                             {
                               name: "ATS",
-                              value: result.ats_score
+                              value: result?.ats_score || 0
                             },
                             {
                               name: "Remaining",
-                              value: 100 - result.ats_score
+                              value: 100 - (result?.ats_score || 0)
                             }
                           ]}
                           dataKey="value"
                           outerRadius={85}
                         >
-
                           {chartColors.map((color, i) => (
                             <Cell key={i} fill={color} />
                           ))}
-
                         </Pie>
-
                         <Tooltip />
-
                       </PieChart>
                     </ResponsiveContainer>
 
                   </div>
-
-                  {/* ===== LINE ===== */}
 
                   <div className="result">
 
@@ -851,22 +798,16 @@ ${res.result}
 
                     <ResponsiveContainer width="100%" height={260}>
                       <LineChart data={history}>
-
                         <CartesianGrid strokeDasharray="3 3" />
-
                         <XAxis dataKey="date" />
-
                         <YAxis />
-
                         <Tooltip />
-
                         <Line
                           type="monotone"
                           dataKey="ats"
                           stroke="#7cd67f"
                           strokeWidth={3}
                         />
-
                       </LineChart>
                     </ResponsiveContainer>
 
@@ -874,87 +815,57 @@ ${res.result}
 
                 </div>
 
-                {/* ================= NOTIFICATIONS ================= */}
-
                 <div className="result">
 
                   <h2>🔔 Notifications</h2>
 
                   {notifications.length === 0 ? (
-
                     <p>No alerts yet.</p>
-
                   ) : (
-
                     <ul>
-
                       {notifications.map((item, index) => (
-
                         <li key={index}>
                           {item.text || item.message} -{" "}
                           {item.time || item.created_at || "Now"}
                         </li>
-
                       ))}
-
                     </ul>
-
                   )}
 
                 </div>
-
-                {/* ================= LOCAL HISTORY ================= */}
 
                 <div className="result">
 
                   <h2>🕒 Previous Reports</h2>
 
                   {history.length === 0 ? (
-
                     <p>No reports found.</p>
-
                   ) : (
-
                     <ul>
-
                       {history.map((item, index) => (
-
                         <li key={index}>
                           {item.date} | {item.role} | ATS {item.ats}
                         </li>
-
                       ))}
-
                     </ul>
-
                   )}
 
                 </div>
-
-                {/* ================= BACKEND REPORTS ================= */}
 
                 <div className="result">
 
                   <h2>☁️ Backend Reports</h2>
 
                   {backendReports.length === 0 ? (
-
                     <p>No backend reports yet.</p>
-
                   ) : (
-
                     <ul>
-
                       {backendReports.map((item, index) => (
-
                         <li key={index}>
                           {item.role} | ₹{item.salary} LPA | ATS {item.ats}
                         </li>
-
                       ))}
-
                     </ul>
-
                   )}
 
                 </div>
@@ -962,7 +873,7 @@ ${res.result}
               </>
             )}
 
-            {/* ================= FOOTER ================= */}
+            {/* FOOTER */}
 
             <p
               style={{
@@ -976,8 +887,11 @@ ${res.result}
             </p>
 
           </div>
+
         </div>
+
       </div>
+
     </div>
   );
 }
