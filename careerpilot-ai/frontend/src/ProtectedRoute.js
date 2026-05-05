@@ -11,197 +11,181 @@ import {
 } from "react-router-dom";
 
 import Swal from "sweetalert2";
+import { api } from "./api";
 
-function ProtectedRoute({
-  children
-}) {
+function ProtectedRoute({ children }) {
 
-  /* =========================
-     STATE
-  ========================= */
+  const [checking, setChecking] = useState(true);
+  const [isValid, setIsValid] = useState(false);
 
-  const [checking, setChecking] =
-    useState(true);
-
-  const [isValid, setIsValid] =
-    useState(false);
-
-  const location =
-    useLocation();
+  const location = useLocation();
 
   /* =========================
-     TOKEN HELPERS
+     HELPERS
   ========================= */
 
-  const getToken = () => {
-    return localStorage.getItem(
-      "token"
-    );
-  };
+  const getToken = () =>
+    localStorage.getItem("token");
 
   const clearSession = () => {
-    localStorage.removeItem(
-      "token"
-    );
-    localStorage.removeItem(
-      "user"
-    );
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("email");
+    localStorage.removeItem("avatar");
+    localStorage.removeItem("plan");
+
   };
 
-  /* =========================
-     SIMPLE TOKEN VALIDATION
-     (future JWT ready)
-  ========================= */
-
-  const validateToken = (
-    token
-  ) => {
+  const validateToken = (token) => {
 
     if (!token) return false;
 
     if (
       token === "null" ||
       token === "undefined"
-    ) {
-      return false;
-    }
+    ) return false;
 
-    if (
-      token.length < 10
-    ) {
-      return false;
-    }
+    if (token.length < 10) return false;
 
     return true;
+
   };
 
   /* =========================
-     CHECK AUTH
+     AUTH CHECK
   ========================= */
 
   useEffect(() => {
 
-    const verifyAuth =
-      async () => {
+    let alertShown = false;
 
-        const token =
-          getToken();
+    const showAlert = (title, text) => {
 
-        /* no token */
+      if (alertShown) return;
 
-        if (!token) {
-          setIsValid(false);
-          setChecking(false);
-          return;
+      alertShown = true;
+
+      Swal.fire({
+        icon: "warning",
+        title,
+        text
+      });
+
+    };
+
+    const verifyAuth = async () => {
+
+      const token = getToken();
+
+      /* ❌ NO TOKEN */
+
+      if (!token) {
+        setIsValid(false);
+        setChecking(false);
+        return;
+      }
+
+      /* ❌ INVALID TOKEN */
+
+      if (!validateToken(token)) {
+
+        clearSession();
+
+        showAlert(
+          "Session Invalid",
+          "Please login again."
+        );
+
+        setIsValid(false);
+        setChecking(false);
+        return;
+      }
+
+      /* ✅ BACKEND VERIFY */
+
+      try {
+
+        const res = await api(
+          "/verify-token",
+          "GET",
+          null,
+          token
+        );
+
+        if (res?.valid) {
+
+          setIsValid(true);
+
+        } else {
+
+          throw new Error();
+
         }
 
-        /* fake token */
+      } catch {
 
-        if (
-          !validateToken(
-            token
-          )
-        ) {
+        clearSession();
 
-          clearSession();
+        showAlert(
+          "Session Expired",
+          "Please login again."
+        );
 
-          Swal.fire({
-            icon: "warning",
-            title:
-              "Session Invalid",
-            text:
-              "Please login again."
-          });
+        setIsValid(false);
 
-          setIsValid(false);
-          setChecking(false);
-          return;
-        }
+      } finally {
 
-        /* =====================
-           FUTURE API VERIFY
-           You can enable later
-        ===================== */
-
-        /*
-        try {
-          await axios.get(
-            "/verify-token",
-            {
-              headers:{
-                Authorization:
-                `Bearer ${token}`
-              }
-            }
-          );
-        } catch {
-          clearSession();
-          setIsValid(false);
-          setChecking(false);
-          return;
-        }
-        */
-
-        setIsValid(true);
         setChecking(false);
 
-      };
+      }
+
+    };
 
     verifyAuth();
 
   }, []);
 
   /* =========================
-     LOADING SCREEN
+     LOADER
   ========================= */
 
   if (checking) {
 
     return (
       <div className="container">
-
         <div className="card authCard">
 
-          <h1>
-            🔒 Checking Access
-          </h1>
+          <h1>🔒 Checking Access</h1>
 
           <p className="subtitle">
-            Verifying your secure
-            session...
+            Verifying your secure session...
           </p>
 
           <div
+            className="pulse"
             style={{
               width: "70px",
               height: "70px",
-              margin:
-                "20px auto",
-              borderRadius:
-                "50%",
-              background:
-                "#eef9ef",
+              margin: "20px auto",
+              borderRadius: "50%",
+              background: "#eef9ef",
               display: "flex",
-              alignItems:
-                "center",
-              justifyContent:
-                "center",
-              fontSize:
-                "32px"
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "32px"
             }}
-            className="pulse"
           >
             🚀
           </div>
 
         </div>
-
       </div>
     );
   }
 
   /* =========================
-     BLOCK ACCESS
+     BLOCK
   ========================= */
 
   if (!isValid) {
@@ -210,16 +194,13 @@ function ProtectedRoute({
       <Navigate
         to="/"
         replace
-        state={{
-          from:
-            location.pathname
-        }}
+        state={{ from: location.pathname }}
       />
     );
   }
 
   /* =========================
-     ALLOW ACCESS
+     ALLOW
   ========================= */
 
   return children;

@@ -20,6 +20,9 @@ function ContactSupport() {
   const navigate =
     useNavigate();
 
+  const BASE_URL =
+    "https://careerpilot-backend-rvv1.onrender.com";
+
   /* =========================
      STATE
   ========================= */
@@ -51,7 +54,8 @@ function ContactSupport() {
     tickets,
     setTickets
   ] = useState([]);
-    /* =========================
+
+  /* =========================
      LOAD OLD TICKETS
   ========================= */
 
@@ -83,7 +87,8 @@ function ContactSupport() {
     });
 
   };
-    /* =========================
+
+  /* =========================
      SUBMIT TICKET
   ========================= */
 
@@ -112,6 +117,9 @@ function ContactSupport() {
 
         setLoading(true);
 
+        const token =
+          localStorage.getItem("token");
+
         const ticketId =
           "CP-" +
           Math.floor(
@@ -122,46 +130,52 @@ function ContactSupport() {
 
         const newTicket = {
           id: ticketId,
-          name:
-            form.name,
-          email:
-            form.email,
-          subject:
-            form.subject,
-          category:
-            form.category,
-          priority:
-            form.priority,
-          message:
-            form.message,
-          status:
-            "Open",
+          name: form.name,
+          email: form.email,
+          subject: form.subject,
+          category: form.category,
+          priority: form.priority,
+          message: form.message,
+          status: "Open",
           time:
             new Date().toLocaleString()
         };
-                try {
+
+        /* BACKEND SEND */
+
+        try {
 
           await axios.post(
-            "https://careerpilot-backend-rvv1.onrender.com/support-ticket",
-            newTicket
+            `${BASE_URL}/support-ticket`,
+            newTicket,
+            {
+              headers: {
+                Authorization:
+                  token
+                    ? `Bearer ${token}`
+                    : ""
+              }
+            }
           );
 
-        } catch {}
+        } catch (err) {
+          console.log(
+            "Backend ticket failed, saved locally"
+          );
+        }
+
+        /* LOCAL SAVE */
 
         const updated = [
           newTicket,
           ...tickets
         ];
 
-        setTickets(
-          updated
-        );
+        setTickets(updated);
 
         localStorage.setItem(
           "careerpilot_tickets",
-          JSON.stringify(
-            updated
-          )
+          JSON.stringify(updated)
         );
 
         Swal.fire({
@@ -171,6 +185,8 @@ function ContactSupport() {
           html:
             `Ticket ID: <b>${ticketId}</b><br/>Support team will contact you soon.`
         });
+
+        /* RESET FORM */
 
         setForm({
           ...form,
@@ -195,23 +211,18 @@ function ContactSupport() {
       }
 
     };
-      /* =========================
+
+  /* =========================
      HELPERS
   ========================= */
 
   const getBadge =
     (priority) => {
 
-      if (
-        priority ===
-        "High"
-      )
+      if (priority === "High")
         return "🔴";
 
-      if (
-        priority ===
-        "Low"
-      )
+      if (priority === "Low")
         return "🟢";
 
       return "🟡";
@@ -226,25 +237,21 @@ function ContactSupport() {
             item.id === id
               ? {
                   ...item,
-                  status:
-                    "Closed"
+                  status: "Closed"
                 }
               : item
         );
 
-      setTickets(
-        updated
-      );
+      setTickets(updated);
 
       localStorage.setItem(
         "careerpilot_tickets",
-        JSON.stringify(
-          updated
-        )
+        JSON.stringify(updated)
       );
 
     };
-      /* =========================
+
+  /* =========================
      UI START
   ========================= */
 
@@ -287,27 +294,24 @@ function ContactSupport() {
             <div className="heroRight">
 
               <div className="statCard">
-
                 <span>⚡</span>
                 <h3>Fast Replies</h3>
                 <p>Priority Support</p>
-
               </div>
 
               <div className="statCard">
-
                 <span>🎫</span>
                 <h3>
                   {tickets.length}
                 </h3>
                 <p>Total Tickets</p>
-
               </div>
 
             </div>
 
           </div>
-                    {/* MAIN */}
+
+          {/* MAIN */}
 
           <div className="card">
 
@@ -334,94 +338,56 @@ function ContactSupport() {
                   name="name"
                   placeholder="Full Name"
                   value={form.name}
-                  onChange={
-                    handleChange
-                  }
+                  onChange={handleChange}
                 />
 
                 <input
                   name="email"
                   placeholder="Email"
                   value={form.email}
-                  onChange={
-                    handleChange
-                  }
+                  onChange={handleChange}
                 />
 
                 <input
                   name="subject"
                   placeholder="Subject"
-                  value={
-                    form.subject
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.subject}
+                  onChange={handleChange}
                 />
-                                <select
+
+                <select
                   name="category"
-                  value={
-                    form.category
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.category}
+                  onChange={handleChange}
                 >
-                  <option>
-                    General Help
-                  </option>
-                  <option>
-                    Login Issue
-                  </option>
-                  <option>
-                    Billing
-                  </option>
-                  <option>
-                    Technical Bug
-                  </option>
-                  <option>
-                    Feature Request
-                  </option>
+                  <option>General Help</option>
+                  <option>Login Issue</option>
+                  <option>Billing</option>
+                  <option>Technical Bug</option>
+                  <option>Feature Request</option>
                 </select>
 
                 <select
                   name="priority"
-                  value={
-                    form.priority
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.priority}
+                  onChange={handleChange}
                 >
-                  <option>
-                    Low
-                  </option>
-                  <option>
-                    Normal
-                  </option>
-                  <option>
-                    High
-                  </option>
+                  <option>Low</option>
+                  <option>Normal</option>
+                  <option>High</option>
                 </select>
 
                 <textarea
                   rows="6"
                   name="message"
                   placeholder="Describe your issue..."
-                  value={
-                    form.message
-                  }
-                  onChange={
-                    handleChange
-                  }
+                  value={form.message}
+                  onChange={handleChange}
                 />
-                                <button
-                  onClick={
-                    submitTicket
-                  }
-                  disabled={
-                    loading
-                  }
+
+                <button
+                  onClick={submitTicket}
+                  disabled={loading}
                 >
                   {loading
                     ? "Submitting..."
@@ -441,83 +407,58 @@ function ContactSupport() {
                 <div className="softPanel">
 
                   <p>
-                    📧 support@careerpilot.ai
+                    support@careerpilot.ai
                   </p>
 
                   <p>
-                    🕒 Mon - Sat
+                    Mon - Sat
                   </p>
 
                   <p>
-                    ⚡ Avg Reply: 2 Hours
+                    Avg Reply: 2 Hours
                   </p>
 
                   <p>
-                    💬 Live Chat Soon
+                    Live Chat Soon
                   </p>
 
                 </div>
-                                <h2>
+
+                <h2>
                   Previous Tickets
                 </h2>
 
-                {tickets.length ===
-                0 ? (
+                {tickets.length === 0 ? (
 
-                  <p>
-                    No tickets yet.
-                  </p>
+                  <p>No tickets yet.</p>
 
                 ) : (
 
                   <ul>
 
                     {tickets.map(
-                      (
-                        item,
-                        index
-                      ) => (
+                      (item, index) => (
 
-                        <li
-                          key={index}
-                          style={{
-                            marginBottom:
-                              "12px"
-                          }}
-                        >
+                        <li key={index}>
 
                           {getBadge(
                             item.priority
                           )}{" "}
-                          <b>
-                            {item.id}
-                          </b>
-                          {" - "}
-                          {item.subject}
+                          <b>{item.id}</b> - {item.subject}
 
                           <br />
 
                           <small>
-                            {item.status}
-                            {" | "}
-                            {item.time}
+                            {item.status} | {item.time}
                           </small>
 
-                          {item.status !==
-                            "Closed" && (
+                          {item.status !== "Closed" && (
 
-                            <div
-                              style={{
-                                marginTop:
-                                  "6px"
-                              }}
-                            >
+                            <div>
                               <button
                                 className="btnSm"
                                 onClick={() =>
-                                  closeTicket(
-                                    item.id
-                                  )
+                                  closeTicket(item.id)
                                 }
                               >
                                 Close
@@ -534,11 +475,10 @@ function ContactSupport() {
                   </ul>
 
                 )}
-                                <button
+
+                <button
                   onClick={() =>
-                    navigate(
-                      "/dashboard"
-                    )
+                    navigate("/dashboard")
                   }
                 >
                   Dashboard
@@ -552,14 +492,10 @@ function ContactSupport() {
 
             <p
               style={{
-                textAlign:
-                  "center",
-                marginTop:
-                  "18px",
-                color:
-                  "#94a398",
-                fontSize:
-                  "13px"
+                textAlign: "center",
+                marginTop: "18px",
+                color: "#94a398",
+                fontSize: "13px"
               }}
             >
               CareerPilot Support •

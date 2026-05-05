@@ -54,11 +54,11 @@ from auth import (
 )
 
 from gemini_service import (
-    extract_skills_ai,
-    recommend_role_ai,
-    salary_prediction_ai,
+    full_resume_analysis,
     improve_resume_ai,
-    interview_questions_ai
+    interview_questions_ai,
+    career_chat_ai,
+    job_recommendation_ai
 )
 
 # ==========================================================
@@ -95,7 +95,18 @@ app = FastAPI(
     version="7.0.0"
 )
 
-otp_storage = {}
+otp_storage[email] = {
+    "otp": otp,
+    "time": datetime.utcnow()
+}
+record = otp_storage.get(email)
+
+if not record:
+    raise HTTPException(...)
+
+if datetime.utcnow() - record["time"] > timedelta(minutes=10):
+    del otp_storage[email]
+    raise HTTPException(detail="OTP expired")
 
 # ==========================================================
 # CORS
@@ -961,7 +972,6 @@ def upgrade_plan(
 # ==========================================================
 # RESUME ANALYSIS
 # ==========================================================
-
 @app.post("/analyze")
 async def analyze_resume(
     file: UploadFile = File(...),
@@ -971,63 +981,108 @@ async def analyze_resume(
     email = "guest_user"
 
     try:
-        email = auth_email(
-            authorization
+        email = auth_email(authorization)
+    except Exception as e:
+        print("Auth failed:", e)
+
+    text = await extract_resume_text(file)
+
+    # ===============================
+    # ✅ AI CALL + SAFE FALLBACK
+    # ===============================
+    try:
+        data = full_resume_analysis(text)
+
+        if not isinstance(data, dict):
+            raise Exception("Invalid AI response")
+
+        if "ats_breakdown" not in data or not data["ats_breakdown"]:
+            score = int(data.get("ats_score", 50))
+
+            data["ats_breakdown"] = {
+                "content": int(score * 0.25),
+                "skills": int(score * 0.25),
+                "formatting": int(score * 0.25),
+                "keywords": int(score * 0.25),
+            }
+
+    except Exception as e:
+        data = {
+            "skills_found": [],
+            "missing_skills": [],
+            "recommended_role": "Unknown",
+            "predicted_salary_lpa": 3,
+            "ats_score": 50,
+            "tips": [],
+            "interview_questions": [],
+            "ats_breakdown": {
+                "content": 25,
+                "skills": 25,
+                "formatting": 25,
+                "keywords": 25
+            }
+        }
+
+    # ===============================
+    # ✅ DATA CLEANING (IMPORTANT)
+    # ===============================
+
+    # ATS int fix
+    try:
+        data["ats_score"] = int(data["ats_score"])
+    except:
+        data["ats_score"] = 50
+
+    # skills list fix
+    if isinstance(data.get("skills_found"), str):
+        data["skills_found"] = [
+            s.strip() for s in data["skills_found"].split(",")
+        ]
+
+    # salary fix
+    try:
+        data["predicted_salary_lpa"] = float(
+            data.get("predicted_salary_lpa", 3)
         )
     except:
-        pass
+        data["predicted_salary_lpa"] = 3
 
-    text = await extract_resume_text(
-        file
-    )
+    # defaults
+    data.setdefault("skills_found", [])
+    data.setdefault("missing_skills", [])
+    data.setdefault("tips", [])
+    data.setdefault("interview_questions", [])
+    data.setdefault("ats_score", 50)
+    data.setdefault("recommended_role", "Unknown")
+    data.setdefault("predicted_salary_lpa", 3)
 
-    skills = extract_skills_ai(text)
-
-    if isinstance(skills, str):
-        skills_list = [
-            s.strip()
-            for s in skills.split(",")
-            if s.strip()
-        ]
-    else:
-        skills_list = skills
-
-    role = recommend_role_ai(
-        ", ".join(skills_list)
-    )
-
-    salary = salary_prediction_ai(
-        ", ".join(skills_list)
-    )
-
-    ats_score = min(
-        len(skills_list) * 10,
-        100
-    )
-
+    # ===============================
+    # ✅ SAVE TO DB (OUTSIDE TRY)
+    # ===============================
     db = SessionLocal()
 
     report = Report(
         email=email,
-        role=role,
-        salary=str(salary),
-        ats=str(ats_score),
-        skills=", ".join(skills_list),
+        role=data.get("recommended_role"),
+        salary=float(data.get("predicted_salary_lpa")),
+        ats=int(data.get("ats_score")),
+        skills=", ".join(data.get("skills_found", [])),
         file_name=file.filename
     )
 
     db.add(report)
     db.commit()
+
+    db_add_notification(email, "Resume analyzed successfully")
+
+    if data.get("ats_score", 0) < 60:
+        db_add_notification(email, "Low ATS score detected", "warning")
+    else:
+        db_add_notification(email, "Strong ATS score generated", "success")
+
     db.close()
 
-    return {
-        "skills_found": skills_list,
-        "recommended_role": role,
-        "predicted_salary_lpa": salary,
-        "ats_score": ats_score
-    }
-
-
+    return data
 # ==========================================================
 # AI RESUME IMPROVEMENT
 # ==========================================================
@@ -1140,6 +1195,40 @@ def dashboard_stats(
         "reports": reports,
         "notifications": notes,
         "plan": user.plan
+    }
+
+# ==========================================================
+# MY REPORTS 
+# ==========================================================
+
+@app.get("/my-reports")
+def get_my_reports(
+    authorization: str = Header(None)
+):
+    email = auth_email(authorization)
+
+    db = SessionLocal()
+
+    rows = db.query(Report).filter(
+        Report.email == email
+    ).order_by(Report.id.desc()).all()
+
+    data = []
+
+    for r in rows:
+        data.append({
+            "role": r.role,
+            "salary": r.salary,
+            "ats": r.ats,
+            "skills": r.skills,
+            "file": r.file_name,
+            "created_at": str(r.created_at)
+        })
+
+    db.close()
+
+    return {
+        "reports": data
     }
 
 
@@ -1690,6 +1779,37 @@ def export_users(
         }
     )
 
+class ChatData(BaseModel):
+    message: str
+
+
+@app.post("/ai/chat")
+def chat_ai(
+    data: ChatData,
+    authorization: str = Header(None)
+):
+
+    try:
+        auth_email(authorization)
+    except:
+        pass
+
+    reply = career_chat_ai(f"""
+    You are CareerPilot AI assistant.
+    User: {data.message}
+    Give clear, helpful answer.""")
+
+    return {"reply": reply}
+class JobData(BaseModel):
+    skills: str
+
+
+@app.post("/ai/jobs")
+def ai_jobs(data: JobData):
+
+    jobs = job_recommendation_ai(data.skills)
+
+    return {"jobs": jobs}
 
 
 

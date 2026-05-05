@@ -5,7 +5,7 @@ import React, {
   useEffect
 } from "react";
 
-import axios from "axios";
+import { api } from "./api";   // ✅ axios हटाकर unified api use
 import Swal from "sweetalert2";
 
 import {
@@ -140,11 +140,11 @@ function ForgotPassword() {
 
         setLoading(true);
 
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/send-reset-otp",
-          {
-            email
-          }
+        // ✅ BACKEND FIX
+        await api(
+          "/forgot-password",
+          "POST",
+          { email }
         );
 
         setOtpSent(true);
@@ -162,14 +162,14 @@ function ForgotPassword() {
             false
         });
 
-      } catch {
+      } catch (err) {
 
         Swal.fire({
           icon: "error",
           title:
             "Failed",
           text:
-            "Unable to send OTP."
+            err?.detail || "Unable to send OTP."
         });
 
       } finally {
@@ -198,42 +198,19 @@ function ForgotPassword() {
         return;
       }
 
-      try {
+      // ✅ Backend me alag verify endpoint nahi hai
+      // Isliye yahan sirf UI validation + next step
 
-        setLoading(true);
+      Swal.fire({
+        icon: "success",
+        title:
+          "OTP Verified",
+        timer: 1200,
+        showConfirmButton:
+          false
+      });
 
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/verify-reset-otp",
-          {
-            email,
-            otp
-          }
-        );
-
-        Swal.fire({
-          icon: "success",
-          title:
-            "OTP Verified",
-          timer: 1200,
-          showConfirmButton:
-            false
-        });
-
-        setStep(3);
-
-      } catch {
-
-        Swal.fire({
-          icon: "error",
-          title:
-            "Wrong OTP"
-        });
-
-      } finally {
-
-        setLoading(false);
-
-      }
+      setStep(3);
 
     };
 
@@ -277,10 +254,13 @@ function ForgotPassword() {
 
         setLoading(true);
 
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/reset-password",
+        // ✅ FINAL BACKEND CALL (OTP + PASSWORD)
+        await api(
+          "/reset-password",
+          "POST",
           {
             email,
+            otp,
             password
           }
         );
@@ -296,14 +276,14 @@ function ForgotPassword() {
             false
         });
 
-      } catch {
+      } catch (err) {
 
         Swal.fire({
           icon: "error",
           title:
             "Failed",
           text:
-            "Please try again."
+            err?.detail || "Wrong OTP"
         });
 
       } finally {

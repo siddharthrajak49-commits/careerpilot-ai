@@ -5,7 +5,7 @@ import React, {
   useEffect
 } from "react";
 
-import axios from "axios";
+import { api } from "./api";   // ✅ CHANGED (axios removed)
 import Swal from "sweetalert2";
 
 import {
@@ -168,10 +168,15 @@ function Signup() {
 
       setLoading(true);
 
-      await axios.post(
-        "https://careerpilot-backend-rvv1.onrender.com/send-signup-otp",
+      const res = await api(
+        "/send-signup-otp",
+        "POST",
         { email }
       );
+
+      if (res.detail) {
+        throw new Error(res.detail);
+      }
 
       setOtpSent(true);
 
@@ -183,14 +188,14 @@ function Signup() {
           "Please check your Gmail inbox 🚀"
       });
 
-    } catch {
+    } catch (error) {
 
       Swal.fire({
         icon: "error",
         title:
           "Failed",
         text:
-          "Unable to send OTP."
+          error.message || "Unable to send OTP."
       });
 
     } finally {
@@ -223,8 +228,9 @@ function Signup() {
 
         setLoading(true);
 
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/verify-signup-otp",
+        const res = await api(
+          "/verify-signup-otp",
+          "POST",
           {
             name,
             email,
@@ -232,6 +238,10 @@ function Signup() {
             otp
           }
         );
+
+        if (res.detail) {
+          throw new Error(res.detail);
+        }
 
         Swal.fire({
           icon: "success",
@@ -260,9 +270,7 @@ function Signup() {
           title:
             "Verification Failed",
           text:
-            error.response?.data
-              ?.detail ||
-            "Wrong OTP"
+            error.message || "Wrong OTP"
         });
 
       } finally {
@@ -311,8 +319,9 @@ function Signup() {
         const user =
           result.user;
 
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/google-login",
+        const res = await api(
+          "/google-login",
+          "POST",
           {
             name:
               user.displayName,
@@ -322,6 +331,10 @@ function Signup() {
               user.photoURL || ""
           }
         );
+
+        if (res.detail) {
+          throw new Error(res.detail);
+        }
 
         Swal.fire({
           icon: "success",
@@ -333,12 +346,14 @@ function Signup() {
 
         navigate("/");
 
-      } catch {
+      } catch (error) {
 
         Swal.fire({
           icon: "error",
           title:
-            "Google Signup Failed"
+            "Google Signup Failed",
+          text:
+            error.message || "Try again"
         });
 
       } finally {

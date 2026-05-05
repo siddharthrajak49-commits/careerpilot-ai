@@ -183,12 +183,12 @@ class Report(Base):
     )
 
     salary = Column(
-        String(50),
+        Float(50),
         default=""
     )
 
     ats = Column(
-        String(20),
+        Integer(20),
         default=""
     )
 

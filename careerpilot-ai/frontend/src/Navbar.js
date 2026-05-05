@@ -1,5 +1,5 @@
 // src/Navbar.js
-
+import { api } from "./api";
 import React, {
   useState,
   useEffect,
@@ -66,55 +66,28 @@ function Navbar() {
      LOAD USER
   ========================= */
 
-  useEffect(() => {
+   useEffect(() => {
 
-    const loadUser = () => {
+  const fetchUser = async () => {
+    try {
 
-      const name =
-        localStorage.getItem(
-          "user"
-        ) || "User";
+      const token = localStorage.getItem("token");
 
-      const image =
-        localStorage.getItem(
-          "photo"
-        ) ||
-        localStorage.getItem(
-          "avatar"
-        ) ||
-        "";
+      const res = await api("/me", "GET", null, token);   // ✅ FIXED (token added)
 
-      const userPlan =
-        localStorage.getItem(
-          "plan"
-        ) || "Free";
+      setUserName(res.name || "User");
+      setPhoto(res.photo || "");
+      setPlan(res.plan || "Free");
+      setEmail(res.email || "");
 
-      const userEmail =
-        localStorage.getItem(
-          "email"
-        ) || "";
+    } catch {
+      console.log("Navbar user load failed");
+    }
+  };
 
-      setUserName(name);
-      setPhoto(image);
-      setPlan(userPlan);
-      setEmail(userEmail);
+  fetchUser();
 
-    };
-
-    loadUser();
-
-    window.addEventListener(
-      "storage",
-      loadUser
-    );
-
-    return () =>
-      window.removeEventListener(
-        "storage",
-        loadUser
-      );
-
-  }, []);
+}, []);
 
   /* =========================
      USER LETTER
@@ -124,7 +97,8 @@ function Navbar() {
     userName
       .charAt(0)
       .toUpperCase();
-        /* =========================
+
+  /* =========================
      SCROLL EFFECT
   ========================= */
 
@@ -210,14 +184,17 @@ function Navbar() {
      LOGOUT
   ========================= */
 
-  const logout =
-    () => {
+   const logout = () => {
 
-      localStorage.clear();
+  localStorage.removeItem("token");
+  localStorage.removeItem("user");
+  localStorage.removeItem("email");
+  localStorage.removeItem("avatar");   // ✅ FIXED (photo → avatar)
+  localStorage.removeItem("plan");
 
-      navigate("/");
+  navigate("/");
 
-    };
+};
 
   /* =========================
      HELPERS
@@ -233,7 +210,8 @@ function Navbar() {
       path
         ? "activeNav"
         : "";
-          /* =========================
+
+  /* =========================
      UI START
   ========================= */
 
@@ -354,7 +332,8 @@ function Navbar() {
         >
           Alerts
         </Link>
-                <Link
+
+        <Link
           to="/profile"
           className={isActive(
             "/profile"
@@ -395,11 +374,11 @@ function Navbar() {
         <div
           className="navProfile"
           ref={profileRef}
-          onClick={() =>
-            setProfileOpen(
-              !profileOpen
-            )
+           onClick={(e) => {
+            e.stopPropagation();
+            setProfileOpen(!profileOpen);
           }
+        }
           style={{
             cursor:
               "pointer",
@@ -457,7 +436,8 @@ function Navbar() {
             </small>
 
           </div>
-                    {/* DROPDOWN */}
+
+          {/* DROPDOWN */}
 
           {profileOpen && (
 

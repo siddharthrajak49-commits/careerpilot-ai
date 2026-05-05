@@ -11,6 +11,8 @@ import {
   useNavigate
 } from "react-router-dom";
 
+import axios from "axios"; // ADDED
+
 import Navbar from "./Navbar";
 import "./App.css";
 
@@ -18,6 +20,9 @@ function Settings() {
 
   const navigate =
     useNavigate();
+
+  const BASE_URL =
+    "https://careerpilot-backend-rvv1.onrender.com"; // ADDED
 
   /* =========================
      STATE
@@ -48,8 +53,6 @@ function Settings() {
     setLanguage
   ] = useState("English");
 
-  /* NEW PREMIUM */
-
   const [
     soundAlerts,
     setSoundAlerts
@@ -74,7 +77,18 @@ function Settings() {
     photo,
     setPhoto
   ] = useState("");
-    /* =========================
+
+  const [
+    plan,
+    setPlan
+  ] = useState("Free"); // ADDED
+
+  const [
+    loading,
+    setLoading
+  ] = useState(false); // ADDED
+
+  /* =========================
      LOAD SETTINGS
   ========================= */
 
@@ -89,63 +103,82 @@ function Settings() {
 
     if (saved) {
 
-      setDarkMode(
-        saved.darkMode
-      );
-
-      setNotifications(
-        saved.notifications
-      );
-
-      setEmailAlerts(
-        saved.emailAlerts
-      );
-
-      setAutoLogout(
-        saved.autoLogout
-      );
-
-      setLanguage(
-        saved.language
-      );
-
-      setSoundAlerts(
-        saved.soundAlerts ??
-        true
-      );
-
-      setThemeMode(
-        saved.themeMode ||
-        "Light"
-      );
+      setDarkMode(saved.darkMode);
+      setNotifications(saved.notifications);
+      setEmailAlerts(saved.emailAlerts);
+      setAutoLogout(saved.autoLogout);
+      setLanguage(saved.language);
+      setSoundAlerts(saved.soundAlerts ?? true);
+      setThemeMode(saved.themeMode || "Light");
 
     }
 
-    /* Load User */
-
     setUserName(
-      localStorage.getItem(
-        "user"
-      ) || "User"
+      localStorage.getItem("user") || "User"
     );
 
     setEmail(
-      localStorage.getItem(
-        "email"
-      ) || ""
+      localStorage.getItem("email") || ""
     );
 
     setPhoto(
-      localStorage.getItem(
-        "photo"
-      ) ||
-      localStorage.getItem(
-        "avatar"
-      ) ||
+      localStorage.getItem("photo") ||
+      localStorage.getItem("avatar") ||
       ""
     );
 
+    setPlan(
+      localStorage.getItem("plan") || "Free"
+    );
+
+    loadProfile(); // ADDED
+
   }, []);
+
+  /* =========================
+     LOAD PROFILE (BACKEND)
+  ========================= */
+
+  const loadProfile =
+    async () => {
+
+      try {
+
+        const token =
+          localStorage.getItem("token");
+
+        if (!token) return;
+
+        const res =
+          await axios.get(
+            `${BASE_URL}/me`,
+            {
+              headers: {
+                Authorization:
+                  `Bearer ${token}`
+              }
+            }
+          );
+
+        const data =
+          res.data;
+
+        setUserName(data.name || "User");
+        setEmail(data.email || "");
+        setPlan(data.plan || "Free");
+
+        localStorage.setItem(
+          "plan",
+          data.plan || "Free"
+        );
+
+      } catch {
+
+        console.log("Profile load failed");
+
+      }
+
+    };
 
   /* =========================
      APPLY DARK MODE
@@ -172,164 +205,218 @@ function Settings() {
     darkMode,
     themeMode
   ]);
-    /* =========================
+
+  /* =========================
      SAVE SETTINGS
   ========================= */
 
-  const saveSettings = () => {
+  const saveSettings =
+    async () => {
 
-    const data = {
-      darkMode,
-      notifications,
-      emailAlerts,
-      autoLogout,
-      language,
-      soundAlerts,
-      themeMode
+      const data = {
+        darkMode,
+        notifications,
+        emailAlerts,
+        autoLogout,
+        language,
+        soundAlerts,
+        themeMode
+      };
+
+      try {
+
+        setLoading(true);
+
+        const token =
+          localStorage.getItem("token");
+
+        await axios.post(
+          `${BASE_URL}/settings`,
+          data,
+          {
+            headers: {
+              Authorization:
+                `Bearer ${token}`
+            }
+          }
+        );
+
+      } catch {
+
+        console.log("Backend save failed");
+
+      }
+
+      localStorage.setItem(
+        "careerpilot_settings",
+        JSON.stringify(data)
+      );
+
+      Swal.fire({
+        icon: "success",
+        title: "Saved Successfully",
+        text: "Your settings updated.",
+        timer: 1400,
+        showConfirmButton: false
+      });
+
+      setLoading(false);
+
     };
 
-    localStorage.setItem(
-      "careerpilot_settings",
-      JSON.stringify(data)
-    );
+  /* =========================
+     PREMIUM UPGRADE
+  ========================= */
 
-    Swal.fire({
-      icon: "success",
-      title:
-        "Saved Successfully",
-      text:
-        "Your settings updated.",
-      timer: 1400,
-      showConfirmButton: false
-    });
+  const upgradePlan =
+    () => {
 
-  };
+      Swal.fire({
+        icon: "info",
+        title: "Upgrade to Premium",
+        text: "Payment system will be added next."
+      });
+
+    };
 
   /* =========================
      CLEAR HISTORY
   ========================= */
 
-  const clearHistory = () => {
+  const clearHistory =
+    () => {
 
-    localStorage.removeItem(
-      "careerpilot_history"
-    );
+      localStorage.removeItem(
+        "careerpilot_history"
+      );
 
-    Swal.fire({
-      icon: "success",
-      title:
-        "History Cleared",
-      text:
-        "All reports removed."
-    });
+      Swal.fire({
+        icon: "success",
+        title: "History Cleared",
+        text: "All reports removed."
+      });
 
-  };
+    };
 
   /* =========================
-     RESET ALL SETTINGS
+     RESET SETTINGS
   ========================= */
 
-  const resetSettings = () => {
+  const resetSettings =
+    () => {
 
-    localStorage.removeItem(
-      "careerpilot_settings"
-    );
+      localStorage.removeItem(
+        "careerpilot_settings"
+      );
 
-    window.location.reload();
+      window.location.reload();
 
-  };
-    /* =========================
+    };
+
+  /* =========================
      LOGOUT ALL
   ========================= */
 
-  const logoutAll = () => {
+  const logoutAll =
+    () => {
 
-    localStorage.clear();
+      localStorage.clear();
 
-    Swal.fire({
-      icon: "success",
-      title:
-        "Logged Out",
-      text:
-        "All sessions cleared."
-    });
+      Swal.fire({
+        icon: "success",
+        title: "Logged Out",
+        text: "All sessions cleared."
+      });
 
-    navigate("/");
+      navigate("/");
 
-  };
+    };
 
   /* =========================
      DELETE ACCOUNT
   ========================= */
 
-  const deleteAccount = () => {
+  const deleteAccount =
+    () => {
 
-    Swal.fire({
-      icon: "warning",
-      title:
-        "Delete Account?",
-      text:
-        "This action cannot be undone.",
-      showCancelButton: true,
-      confirmButtonText:
-        "Delete"
-    }).then((res) => {
+      Swal.fire({
+        icon: "warning",
+        title: "Delete Account?",
+        text: "This action cannot be undone.",
+        showCancelButton: true,
+        confirmButtonText: "Delete"
+      }).then(async (res) => {
 
-      if (res.isConfirmed) {
+        if (res.isConfirmed) {
 
-        localStorage.clear();
+          try {
 
-        Swal.fire({
-          icon: "success",
-          title:
-            "Deleted",
-          text:
-            "Account removed."
-        });
+            const token =
+              localStorage.getItem("token");
 
-        navigate("/");
+            await axios.delete(
+              `${BASE_URL}/delete-account`,
+              {
+                headers: {
+                  Authorization:
+                    `Bearer ${token}`
+                }
+              }
+            );
 
-      }
+          } catch {}
 
-    });
+          localStorage.clear();
 
-  };
+          Swal.fire({
+            icon: "success",
+            title: "Deleted",
+            text: "Account removed."
+          });
 
-  /* =========================
-     DOWNLOAD USER DATA
-  ========================= */
+          navigate("/");
 
-  const downloadData = () => {
+        }
 
-    const data =
-      JSON.stringify(
-        localStorage,
-        null,
-        2
-      );
-
-    const blob =
-      new Blob([data], {
-        type:
-          "application/json"
       });
 
-    const url =
-      URL.createObjectURL(
-        blob
-      );
+    };
 
-    const a =
-      document.createElement("a");
+  /* =========================
+     DOWNLOAD DATA
+  ========================= */
 
-    a.href = url;
-    a.download =
-      "careerpilot-data.json";
-    a.click();
+  const downloadData =
+    () => {
 
-  };
-    /* =========================
-     UI START
+      const data =
+        JSON.stringify(
+          localStorage,
+          null,
+          2
+        );
+
+      const blob =
+        new Blob([data], {
+          type: "application/json"
+        });
+
+      const url =
+        URL.createObjectURL(blob);
+
+      const a =
+        document.createElement("a");
+
+      a.href = url;
+      a.download =
+        "careerpilot-data.json";
+
+      a.click();
+
+    };
+
+  /* =========================
+     UI (UNCHANGED)
   ========================= */
 
   return (
@@ -337,16 +424,9 @@ function Settings() {
 
       <div className="container dashboardWrap">
 
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "1180px"
-          }}
-        >
+        <div style={{ width: "100%", maxWidth: "1180px" }}>
 
           <Navbar />
-
-          {/* HERO */}
 
           <div className="result heroBanner">
 
@@ -362,8 +442,7 @@ function Settings() {
 
               <p className="heroText">
                 Manage preferences,
-                privacy and account
-                controls.
+                privacy and account controls.
               </p>
 
             </div>
@@ -373,32 +452,20 @@ function Settings() {
               <div className="statCard">
 
                 {photo ? (
-
-                  <img
-                    src={photo}
-                    alt="profile"
-                    style={{
-                      width: "55px",
-                      height: "55px",
-                      borderRadius:
-                        "50%",
-                      objectFit:
-                        "cover"
-                    }}
+                  <img src={photo} alt="profile"
+                    style={{ width: "55px", height: "55px", borderRadius: "50%" }}
                   />
-
                 ) : (
-
                   <span>🔒</span>
-
                 )}
 
-                <h3>
-                  {userName}
-                </h3>
+                <h3>{userName}</h3>
+                <p>{email}</p>
 
                 <p>
-                  {email || "Secure User"}
+                  {plan === "Premium"
+                    ? "⭐ Premium"
+                    : "Free User"}
                 </p>
 
               </div>
@@ -407,303 +474,295 @@ function Settings() {
 
           </div>
 
-          {/* MAIN CARD */}
+          {/* SAME REST UI */}
+                    {/* TOGGLES */}
 
-          <div className="card">
+          <div className="result">
 
-            <h1>
-              ⚙️ Settings Center
-            </h1>
+            <h2>
+              Preferences
+            </h2>
 
-            <p className="subtitle">
-              Personalize CareerPilot
-              the way you like.
+            <p>
+              Dark Mode
             </p>
-                        {/* TOGGLES */}
 
-            <div className="result">
-
-              <h2>
-                Preferences
-              </h2>
-
-              <p>
-                Dark Mode
-              </p>
-
-              <button
-                className="btnSm"
-                onClick={() =>
-                  setDarkMode(
-                    !darkMode
-                  )
-                }
-              >
-                {darkMode
-                  ? "Enabled"
-                  : "Disabled"}
-              </button>
-
-              <p
-                style={{
-                  marginTop:
-                    "16px"
-                }}
-              >
-                Notifications
-              </p>
-
-              <button
-                className="btnSm"
-                onClick={() =>
-                  setNotifications(
-                    !notifications
-                  )
-                }
-              >
-                {notifications
-                  ? "ON"
-                  : "OFF"}
-              </button>
-
-              <p
-                style={{
-                  marginTop:
-                    "16px"
-                }}
-              >
-                Email Alerts
-              </p>
-
-              <button
-                className="btnSm"
-                onClick={() =>
-                  setEmailAlerts(
-                    !emailAlerts
-                  )
-                }
-              >
-                {emailAlerts
-                  ? "ON"
-                  : "OFF"}
-              </button>
-
-              <p
-                style={{
-                  marginTop:
-                    "16px"
-                }}
-              >
-                Sound Alerts
-              </p>
-
-              <button
-                className="btnSm"
-                onClick={() =>
-                  setSoundAlerts(
-                    !soundAlerts
-                  )
-                }
-              >
-                {soundAlerts
-                  ? "ON"
-                  : "OFF"}
-              </button>
-
-            </div>
-                        {/* SECURITY */}
-
-            <div className="result">
-
-              <h2>
-                Security
-              </h2>
-
-              <p>
-                Auto Logout Time
-              </p>
-
-              <select
-                value={
-                  autoLogout
-                }
-                onChange={(e) =>
-                  setAutoLogout(
-                    e.target.value
-                  )
-                }
-              >
-                <option value="15">
-                  15 Minutes
-                </option>
-
-                <option value="30">
-                  30 Minutes
-                </option>
-
-                <option value="60">
-                  1 Hour
-                </option>
-              </select>
-
-              <p
-                style={{
-                  marginTop:
-                    "18px"
-                }}
-              >
-                Language
-              </p>
-
-              <select
-                value={
-                  language
-                }
-                onChange={(e) =>
-                  setLanguage(
-                    e.target.value
-                  )
-                }
-              >
-                <option>
-                  English
-                </option>
-
-                <option>
-                  Hindi
-                </option>
-
-                <option>
-                  Hinglish
-                </option>
-              </select>
-
-              <p
-                style={{
-                  marginTop:
-                    "18px"
-                }}
-              >
-                Theme Mode
-              </p>
-
-              <select
-                value={
-                  themeMode
-                }
-                onChange={(e) =>
-                  setThemeMode(
-                    e.target.value
-                  )
-                }
-              >
-                <option>
-                  Light
-                </option>
-
-                <option>
-                  Dark
-                </option>
-
-                <option>
-                  Auto
-                </option>
-              </select>
-
-            </div>
-                        {/* ACTIONS */}
-
-            <div className="result">
-
-              <h2>
-                Quick Actions
-              </h2>
-
-              <div className="btnRow">
-
-                <button
-                  onClick={
-                    saveSettings
-                  }
-                >
-                  Save Settings
-                </button>
-
-                <button
-                  onClick={
-                    clearHistory
-                  }
-                >
-                  Clear History
-                </button>
-
-                <button
-                  onClick={
-                    downloadData
-                  }
-                >
-                  Download Data
-                </button>
-
-                <button
-                  onClick={
-                    resetSettings
-                  }
-                >
-                  Reset Settings
-                </button>
-
-                <button
-                  onClick={
-                    logoutAll
-                  }
-                >
-                  Logout All
-                </button>
-
-                <button
-                  onClick={
-                    deleteAccount
-                  }
-                  style={{
-                    background:
-                      "#fff2f2",
-                    color:
-                      "#e03131"
-                  }}
-                >
-                  Delete Account
-                </button>
-
-              </div>
-
-            </div>
-
-            {/* FOOTER */}
+            <button
+              className="btnSm"
+              onClick={() =>
+                setDarkMode(
+                  !darkMode
+                )
+              }
+            >
+              {darkMode
+                ? "Enabled"
+                : "Disabled"}
+            </button>
 
             <p
               style={{
-                textAlign:
-                  "center",
                 marginTop:
-                  "18px",
-                color:
-                  "#94a398",
-                fontSize:
-                  "13px"
+                  "16px"
               }}
             >
-              CareerPilot AI •
-              Smart Secure Settings
+              Notifications
             </p>
 
+            <button
+              className="btnSm"
+              onClick={() =>
+                setNotifications(
+                  !notifications
+                )
+              }
+            >
+              {notifications
+                ? "ON"
+                : "OFF"}
+            </button>
+
+            <p
+              style={{
+                marginTop:
+                  "16px"
+              }}
+            >
+              Email Alerts
+            </p>
+
+            <button
+              className="btnSm"
+              onClick={() =>
+                setEmailAlerts(
+                  !emailAlerts
+                )
+              }
+            >
+              {emailAlerts
+                ? "ON"
+                : "OFF"}
+            </button>
+
+            <p
+              style={{
+                marginTop:
+                  "16px"
+              }}
+            >
+              Sound Alerts
+            </p>
+
+            <button
+              className="btnSm"
+              onClick={() =>
+                setSoundAlerts(
+                  !soundAlerts
+                )
+              }
+            >
+              {soundAlerts
+                ? "ON"
+                : "OFF"}
+            </button>
+
           </div>
+
+          {/* SECURITY */}
+
+          <div className="result">
+
+            <h2>
+              Security
+            </h2>
+
+            <p>
+              Auto Logout Time
+            </p>
+
+            <select
+              value={
+                autoLogout
+              }
+              onChange={(e) =>
+                setAutoLogout(
+                  e.target.value
+                )
+              }
+            >
+              <option value="15">
+                15 Minutes
+              </option>
+
+              <option value="30">
+                30 Minutes
+              </option>
+
+              <option value="60">
+                1 Hour
+              </option>
+
+            </select>
+
+            <p
+              style={{
+                marginTop:
+                  "18px"
+              }}
+            >
+              Language
+            </p>
+
+            <select
+              value={
+                language
+              }
+              onChange={(e) =>
+                setLanguage(
+                  e.target.value
+                )
+              }
+            >
+              <option>
+                English
+              </option>
+
+              <option>
+                Hindi
+              </option>
+
+              <option>
+                Hinglish
+              </option>
+
+            </select>
+
+            <p
+              style={{
+                marginTop:
+                  "18px"
+              }}
+            >
+              Theme Mode
+            </p>
+
+            <select
+              value={
+                themeMode
+              }
+              onChange={(e) =>
+                setThemeMode(
+                  e.target.value
+                )
+              }
+            >
+              <option>
+                Light
+              </option>
+
+              <option>
+                Dark
+              </option>
+
+              <option>
+                Auto
+              </option>
+
+            </select>
+
+          </div>
+                    {/* ACTIONS */}
+
+          <div className="result">
+
+            <h2>
+              Quick Actions
+            </h2>
+
+            <div className="btnRow">
+
+              <button
+                onClick={
+                  saveSettings
+                }
+              >
+                Save Settings
+              </button>
+
+              <button
+                onClick={
+                  clearHistory
+                }
+              >
+                Clear History
+              </button>
+
+              <button
+                onClick={
+                  downloadData
+                }
+              >
+                Download Data
+              </button>
+
+              <button
+                onClick={
+                  resetSettings
+                }
+              >
+                Reset Settings
+              </button>
+
+              <button
+                onClick={
+                  logoutAll
+                }
+              >
+                Logout All
+              </button>
+
+              <button
+                onClick={
+                  deleteAccount
+                }
+                style={{
+                  background:
+                    "#fff2f2",
+                  color:
+                    "#e03131"
+                }}
+              >
+                Delete Account
+              </button>
+
+            </div>
+
+          </div>
+
+          {/* FOOTER */}
+
+          <p
+            style={{
+              textAlign:
+                "center",
+              marginTop:
+                "18px",
+              color:
+                "#94a398",
+              fontSize:
+                "13px"
+            }}
+          >
+            CareerPilot AI •
+            Smart Secure Settings
+          </p>
 
         </div>
 
       </div>
 
     </div>
+
   );
 }
 

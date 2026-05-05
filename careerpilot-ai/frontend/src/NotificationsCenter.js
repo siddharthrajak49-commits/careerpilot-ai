@@ -5,7 +5,7 @@ import React, {
   useEffect
 } from "react";
 
-import axios from "axios";
+import { api } from "./api";
 import Swal from "sweetalert2";
 
 import {
@@ -33,7 +33,8 @@ function NotificationsCenter() {
     loading,
     setLoading
   ] = useState(false);
-    /* =========================
+
+  /* =========================
      LOAD DATA
   ========================= */
 
@@ -50,49 +51,26 @@ function NotificationsCenter() {
 
         setLoading(true);
 
-        const token =
-          localStorage.getItem(
-            "token"
-          );
-
         const res =
-          await axios.get(
-            "https://careerpilot-backend-rvv1.onrender.com/notifications",
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${token}`
-              }
-            }
-          );
+          await api("/notifications");
 
         if (
-          res.data.items
+          res.notifications
         ) {
 
           const apiData =
-            res.data.items.map(
+            res.notifications.map(
               (item) => ({
-                text:
-                  item,
-                time:
-                  new Date().toLocaleTimeString(),
-                type:
-                  "info",
-                read:
-                  false
+                id: item.id,
+                text: item.text,
+                time: item.created_at,
+                type: item.type || "info",
+                read: item.is_read
               })
             );
 
           setNotifications(
             apiData
-          );
-
-          localStorage.setItem(
-            "careerpilot_notify",
-            JSON.stringify(
-              apiData
-            )
           );
 
         }
@@ -108,7 +86,8 @@ function NotificationsCenter() {
       }
 
     };
-      /* =========================
+
+  /* =========================
      FALLBACK LOCAL
   ========================= */
 
@@ -179,13 +158,22 @@ function NotificationsCenter() {
       }
 
     };
-    
-      /* =========================
-     MARK READ
+
+  /* =========================
+     MARK READ (BACKEND CONNECT)
   ========================= */
 
   const markRead =
-    (index) => {
+    async (id, index) => {
+
+      try {
+
+        await api(
+          `/notifications/read/${id}`,
+          "PUT"
+        );
+
+      } catch {}
 
       const updated =
         [...notifications];
@@ -197,16 +185,9 @@ function NotificationsCenter() {
         updated
       );
 
-      localStorage.setItem(
-        "careerpilot_notify",
-        JSON.stringify(
-          updated
-        )
-      );
-
     };
 
-      /* =========================
+  /* =========================
      CLEAR ALL
   ========================= */
 
@@ -257,13 +238,6 @@ function NotificationsCenter() {
         updated
       );
 
-      localStorage.setItem(
-        "careerpilot_notify",
-        JSON.stringify(
-          updated
-        )
-      );
-
     };
 
   /* =========================
@@ -294,7 +268,8 @@ function NotificationsCenter() {
 
     return "🔔";
   };
-    /* =========================
+
+  /* =========================
      UI START
   ========================= */
 
@@ -369,7 +344,8 @@ function NotificationsCenter() {
             </div>
 
           </div>
-                    {/* MAIN */}
+
+          {/* MAIN */}
 
           <div className="card">
 
@@ -433,7 +409,8 @@ function NotificationsCenter() {
               ) : (
 
                 <ul className="notifyList">
-                                      {notifications.map(
+
+                  {notifications.map(
                     (
                       item,
                       index
@@ -476,12 +453,13 @@ function NotificationsCenter() {
                           }}
                         >
 
-                          {!item.read && (
+                          {!item.read && item.id && (
 
                             <button
                               className="btnSm"
                               onClick={() =>
                                 markRead(
+                                  item.id,
                                   index
                                 )
                               }
@@ -514,7 +492,8 @@ function NotificationsCenter() {
               )}
 
             </div>
-                        {/* QUICK INFO */}
+
+            {/* QUICK INFO */}
 
             <div className="result">
 

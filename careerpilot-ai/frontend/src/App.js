@@ -50,8 +50,18 @@ import NotFound from "./NotFound";
 
 function App() {
 
-  const token =
-    localStorage.getItem("token");
+  /* =========================
+     AUTH STATE (FIXED)
+  ========================= */
+
+  const isLoggedIn =
+    !!localStorage.getItem("token");
+
+  const userEmail =
+    localStorage.getItem("email");
+
+  const isAdmin =
+    userEmail === "admin@careerpilot.com"; // 👉 change this email
 
   return (
 
@@ -65,12 +75,12 @@ function App() {
              PUBLIC ROUTES
           ===================== */}
 
-          {/* Login */}
+          {/* LOGIN */}
 
           <Route
             path="/"
             element={
-              token
+              isLoggedIn
                 ? (
                   <Navigate
                     to="/dashboard"
@@ -83,12 +93,12 @@ function App() {
             }
           />
 
-          {/* Signup */}
+          {/* SIGNUP */}
 
           <Route
             path="/signup"
             element={
-              token
+              isLoggedIn
                 ? (
                   <Navigate
                     to="/dashboard"
@@ -101,12 +111,12 @@ function App() {
             }
           />
 
-          {/* Forgot Password */}
+          {/* FORGOT PASSWORD */}
 
           <Route
             path="/forgot-password"
             element={
-              token
+              isLoggedIn
                 ? (
                   <Navigate
                     to="/dashboard"
@@ -119,10 +129,10 @@ function App() {
             }
           />
 
-          {/* Reset Password */}
+          {/* RESET PASSWORD (FIXED) */}
 
           <Route
-            path="/reset-password/:token"
+            path="/reset-password"
             element={
               <ResetPassword />
             }
@@ -132,7 +142,7 @@ function App() {
              PRIVATE ROUTES
           ===================== */}
 
-          {/* Dashboard */}
+          {/* DASHBOARD */}
 
           <Route
             path="/dashboard"
@@ -143,7 +153,7 @@ function App() {
             }
           />
 
-          {/* Resume Builder */}
+          {/* RESUME BUILDER */}
 
           <Route
             path="/resume-builder"
@@ -154,7 +164,7 @@ function App() {
             }
           />
 
-          {/* Interview Coach */}
+          {/* INTERVIEW */}
 
           <Route
             path="/interview-coach"
@@ -165,7 +175,7 @@ function App() {
             }
           />
 
-          {/* Support */}
+          {/* SUPPORT */}
 
           <Route
             path="/support"
@@ -176,7 +186,7 @@ function App() {
             }
           />
 
-          {/* Notifications */}
+          {/* NOTIFICATIONS */}
 
           <Route
             path="/notifications"
@@ -187,7 +197,7 @@ function App() {
             }
           />
 
-          {/* Profile */}
+          {/* PROFILE */}
 
           <Route
             path="/profile"
@@ -198,7 +208,7 @@ function App() {
             }
           />
 
-          {/* Settings */}
+          {/* SETTINGS */}
 
           <Route
             path="/settings"
@@ -209,7 +219,7 @@ function App() {
             }
           />
 
-          {/* Analytics */}
+          {/* ANALYTICS */}
 
           <Route
             path="/analytics"
@@ -220,25 +230,34 @@ function App() {
             }
           />
 
-          {/* Admin */}
+          {/* ADMIN (SECURED) */}
 
           <Route
             path="/admin"
             element={
-              <ProtectedRoute>
-                <AdminDashboard />
-              </ProtectedRoute>
+              isAdmin
+                ? (
+                  <ProtectedRoute>
+                    <AdminDashboard />
+                  </ProtectedRoute>
+                )
+                : (
+                  <Navigate
+                    to="/dashboard"
+                    replace
+                  />
+                )
             }
           />
 
           {/* =====================
-             FALLBACK ROUTE
+             FALLBACK
           ===================== */}
 
           <Route
             path="*"
             element={
-              token
+              isLoggedIn
                 ? (
                   <NotFound />
                 )

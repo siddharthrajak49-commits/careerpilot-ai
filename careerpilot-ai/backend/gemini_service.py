@@ -1,78 +1,161 @@
 import os
+import json
 import google.generativeai as genai
+
+# ===============================
+# OPTIONAL GPT (HYBRID MODE)
+# ===============================
+USE_GPT = False  # True karna ho to enable karo
+
+if USE_GPT:
+    import openai
+    openai.api_key = os.getenv("OPENAI_API_KEY")
 
 # ===============================
 # CONFIG
 # ===============================
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
 genai.configure(api_key=GEMINI_API_KEY)
 
 model = genai.GenerativeModel("gemini-1.5-flash")
 
 
 # ===============================
-# GENERIC ASK
+# CORE CALL (HYBRID)
 # ===============================
 
-def ask_gemini(prompt):
+def ask_ai(prompt):
+
+    # 👉 Try Gemini first
     try:
         response = model.generate_content(prompt)
-        return response.text.strip()
-    except Exception as e:
-        return f"Error: {str(e)}"
+        text = response.text.strip()
+        text = text.replace("```json", "").replace("```", "").strip()
+        return text
+    except:
+        pass
+
+    # 👉 fallback GPT
+    if USE_GPT:
+        try:
+            res = openai.ChatCompletion.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "user", "content": prompt}]
+            )
+            return res.choices[0].message.content.strip()
+        except:
+            pass
+
+    return ""
 
 
 # ===============================
-# SKILL EXTRACTION
+# SAFE JSON PARSER
 # ===============================
 
-def extract_skills_ai(resume_text):
+def parse_json(text, fallback):
+    try:
+        return json.loads(text)
+    except:
+        return fallback
+
+
+# ===============================
+# FULL AI ANALYSIS 🔥🔥🔥
+# ===============================
+
+def full_resume_analysis(resume_text):
+
     prompt = f"""
-    Analyze this resume text and extract only technical + soft skills.
+You are a world-class AI Career Coach like ChatGPT.
 
-    Return comma separated list only.
+Analyze deeply and return STRICT JSON:
 
-    Resume:
-    {resume_text}
-    """
+{{
+  "skills_found": [],
+  "missing_skills": [],
+  "recommended_role": "",
+  "predicted_salary_lpa": 0,
+  "ats_score": 0,
+  "ats_breakdown": {{
+    "content": 0,
+    "skills": 0,
+    "formatting": 0,
+    "keywords": 0
+  }},
+  "tips": [],
+  "interview_questions": []
+}}
 
-    return ask_gemini(prompt)
+RULES:
+- Give realistic ATS score
+- ats_breakdown total ≈ ats_score
+- tips = actionable
+- questions = role-based
+- salary = Indian fresher realistic
+
+Resume:
+{resume_text}
+"""
+
+    res = ask_ai(prompt)
+
+    return parse_json(res, {
+        "skills_found": [],
+        "missing_skills": [],
+        "recommended_role": "Unknown",
+        "predicted_salary_lpa": 4,
+        "ats_score": 50,
+        "ats_breakdown": {
+            "content": 20,
+            "skills": 10,
+            "formatting": 10,
+            "keywords": 10
+        },
+        "tips": ["Improve resume"],
+        "interview_questions": ["Tell me about yourself"]
+    })
 
 
 # ===============================
-# ROLE RECOMMENDATION
+# JOB RECOMMENDATION (AI)
 # ===============================
 
-def recommend_role_ai(skills):
+def job_recommendation_ai(skills):
+
     prompt = f"""
-    Based on these skills:
+Based on skills: {skills}
 
-    {skills}
+Give 5 job roles list JSON:
 
-    Suggest best job role in one line only.
-    """
+{{"jobs":[]}}
+"""
 
-    return ask_gemini(prompt)
+    res = ask_ai(prompt)
+
+    return parse_json(res, {"jobs": []}).get("jobs", [])
 
 
 # ===============================
-# SALARY PREDICTION
+# AI CHAT ASSISTANT 🔥
 # ===============================
 
-def salary_prediction_ai(skills):
+def career_chat_ai(user_message, context=""):
+
     prompt = f"""
-    Based on Indian fresher market.
+You are CareerPilot AI assistant like ChatGPT.
 
-    Skills:
-    {skills}
+Context:
+{context}
 
-    Predict salary in LPA only number.
-    Example: 6.5
-    """
+User:
+{user_message}
 
-    return ask_gemini(prompt)
+Give helpful, short, clear answer.
+"""
+
+    return ask_ai(prompt)
 
 
 # ===============================
@@ -80,20 +163,29 @@ def salary_prediction_ai(skills):
 # ===============================
 
 def improve_resume_ai(resume_text):
+
     prompt = f"""
-    Improve this resume professionally.
+Improve this resume.
 
-    Give:
-    1. Weak points
-    2. ATS improvements
-    3. Better summary
-    4. Better skills section
+Return JSON:
 
-    Resume:
-    {resume_text}
-    """
+{{
+  "summary": "",
+  "improvements": [],
+  "keywords": []
+}}
 
-    return ask_gemini(prompt)
+Resume:
+{resume_text}
+"""
+
+    res = ask_ai(prompt)
+
+    return parse_json(res, {
+        "summary": "",
+        "improvements": [],
+        "keywords": []
+    })
 
 
 # ===============================
@@ -101,9 +193,14 @@ def improve_resume_ai(resume_text):
 # ===============================
 
 def interview_questions_ai(role):
-    prompt = f"""
-    Generate top 10 interview questions for {role}
-    with answers.
-    """
 
-    return ask_gemini(prompt)
+    prompt = f"""
+Generate 5 interview Q&A for {role}
+
+Return JSON:
+{{"questions":[]}}
+"""
+
+    res = ask_ai(prompt)
+
+    return parse_json(res, {"questions": []}).get("questions", [])

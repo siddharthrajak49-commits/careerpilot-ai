@@ -5,7 +5,7 @@ import React, {
   useEffect
 } from "react";
 
-import axios from "axios";
+import { api } from "./api";   // ✅ axios हटाकर api use किया
 import Swal from "sweetalert2";
 import { useNavigate } from "react-router-dom";
 
@@ -117,18 +117,10 @@ function Profile() {
         }
 
         const res =
-          await axios.get(
-            "https://careerpilot-backend-rvv1.onrender.com/me",
-            {
-              headers: {
-                Authorization:
-                  `Bearer ${token}`
-              }
-            }
-          );
+          await api("/me", "GET", null, token);
 
         const data =
-          res.data;
+          res;
 
         setName(
           data.name || "User"
@@ -155,6 +147,10 @@ function Profile() {
           data.plan || "Free"
         );
 
+        setAvatar(
+          data.photo || ""
+        );
+
         localStorage.setItem(
           "user",
           data.name || "User"
@@ -163,6 +159,11 @@ function Profile() {
         localStorage.setItem(
           "email",
           data.email || ""
+        );
+
+        localStorage.setItem(
+          "avatar",
+          data.photo || ""
         );
 
       } catch {
@@ -249,21 +250,16 @@ function Profile() {
             "token"
           );
 
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/profile/update",
+        await api(
+          "/profile/update",
+          "POST",
           {
             name,
-            email,
             phone,
             city,
             bio
           },
-          {
-            headers: {
-              Authorization:
-                `Bearer ${token}`
-            }
-          }
+          token
         );
 
       } catch {}
@@ -313,33 +309,55 @@ function Profile() {
   ========================= */
 
   const handleAvatar =
-    (e) => {
+    async (e) => {
 
       const file =
         e.target.files[0];
 
       if (!file) return;
 
-      const reader =
-        new FileReader();
+      try {
 
-      reader.onloadend =
-        () => {
+        const token =
+          localStorage.getItem("token");
 
-          setAvatar(
-            reader.result
+        const formData =
+          new FormData();
+
+        formData.append("file", file);
+
+        const res =
+          await api(
+            "/upload/avatar",
+            "POST",
+            formData,
+            token
           );
 
-          localStorage.setItem(
-            "avatar",
-            reader.result
-          );
+        setAvatar(
+          res.url
+        );
 
-        };
+        localStorage.setItem(
+          "avatar",
+          res.url
+        );
 
-      reader.readAsDataURL(
-        file
-      );
+        Swal.fire({
+          icon: "success",
+          title:
+            "Avatar Updated"
+        });
+
+      } catch {
+
+        Swal.fire({
+          icon: "error",
+          title:
+            "Upload Failed"
+        });
+
+      }
 
     };
 
@@ -527,11 +545,7 @@ function Profile() {
 
                 <input
                   value={email}
-                  onChange={(e)=>
-                    setEmail(
-                      e.target.value
-                    )
-                  }
+                  disabled
                   placeholder="Email"
                 />
 

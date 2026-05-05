@@ -4,8 +4,9 @@ import React, {
   useState,
   useEffect
 } from "react";
+import { api } from "./api";
 
-import axios from "axios";
+
 import Swal from "sweetalert2";
 
 import {
@@ -146,188 +147,56 @@ function Login() {
   /* =========================
      NORMAL LOGIN API
   ========================= */
+const loginUser = async () => {
 
-  const loginUser = async () => {
+  if (!validateForm()) {
+    Swal.fire({
+      icon: "warning",
+      title: "Invalid Form",
+      text: "Please check your details."
+    });
+    return;
+  }
 
-    if (!validateForm()) {
+  try {
+    setLoading(true);
 
+    const res = await api("/login", "POST", {
+      email,
+      password
+    });
+
+    console.log(res);
+
+    // ✅ BACKEND ERROR HANDLE
+    if (!res || res.detail) {
       Swal.fire({
-        icon: "warning",
-        title:
-          "Invalid Form",
-        text:
-          "Please check your details."
+        icon: "error",
+        title: "Login Failed",
+        text: res?.detail || "Invalid credentials"
       });
-
       return;
     }
 
-    try {
+    if (res.token) {
 
-      setLoading(
-        true
-      );
+      // 🔐 SAVE DATA (UPDATED)
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("user", res.user);
+      localStorage.setItem("email", res.email);
+      localStorage.setItem("plan", res.plan || "Free");
+      localStorage.setItem("avatar", res.photo || "");
 
-      const res =
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/login",
-          {
-            email,
-            password
-          }
-        );
-
-      /* Save Session */
-
-      localStorage.setItem(
-        "token",
-        res.data.token
-      );
-
-      localStorage.setItem(
-        "user",
-        res.data.user
-      );
-
-      localStorage.setItem(
-        "email",
-        res.data.email
-      );
-
-      /* Remember Email */
-
-      if (
-        rememberMe
-      ) {
-
-        localStorage.setItem(
-          "remember_email",
-          email
-        );
-
+      if (rememberMe) {
+        localStorage.setItem("remember_email", email);
       } else {
-
-        localStorage.removeItem(
-          "remember_email"
-        );
-
+        localStorage.removeItem("remember_email");
       }
 
       Swal.fire({
         icon: "success",
-        title:
-          "Login Successful",
-        text:
-          "Welcome back to CareerPilot 🚀",
-        timer: 1500,
-        showConfirmButton:
-          false
-      });
-
-      setTimeout(() => {
-
-        navigate(
-          "/dashboard"
-        );
-
-      }, 1500);
-
-    } catch (error) {
-
-      if (
-        error.response
-      ) {
-
-        Swal.fire({
-          icon: "error",
-          title:
-            "Login Failed",
-          text:
-            error.response.data
-              .detail ||
-            "Invalid credentials"
-        });
-
-      } else {
-
-        Swal.fire({
-          icon: "error",
-          title:
-            "Server Error",
-          text:
-            "Please try again later."
-        });
-
-      }
-
-    } finally {
-
-      setLoading(
-        false
-      );
-
-    }
-
-  };
-
-  /* =========================
-     GOOGLE LOGIN REAL
-  ========================= */
-    const googleLogin =
-    async () => {
-        try {
-            setLoading(true);
-            const result =
-            await signInWithPopup(auth,provider
-        );
-
-      const user =
-        result.user;
-
-      const res =
-        await axios.post(
-          "https://careerpilot-backend-rvv1.onrender.com/google-login",
-          {
-            name:
-              user.displayName,
-            email:
-              user.email,
-            photo:
-              user.photoURL || ""
-          }
-        );
-
-      localStorage.setItem(
-        "token",
-        res.data.token
-      );
-
-      localStorage.setItem(
-        "user",
-        res.data.user
-      );
-
-      localStorage.setItem(
-        "email",
-        res.data.email
-      );
-
-      localStorage.setItem(
-        "photo",
-        res.data.photo || ""
-      );
-
-      localStorage.setItem(
-        "plan",
-        res.data.plan || "Free"
-      );
-
-      Swal.fire({
-        icon: "success",
-        title:
-          "Google Login Successful",
-        text:
-          `Welcome ${res.data.user} 🚀`,
+        title: "Login Successful",
+        text: "Welcome back 🚀",
         timer: 1500,
         showConfirmButton: false
       });
@@ -336,24 +205,99 @@ function Login() {
         navigate("/dashboard");
       }, 1500);
 
-    } catch (error) {
+    } else {
 
       Swal.fire({
         icon: "error",
-        title:
-          "Google Login Failed",
-        text:
-          "Please try again."
+        title: "Login Failed",
+        text: "Invalid response from server"
       });
-
-    } finally {
-
-      setLoading(false);
 
     }
 
-  };
+  } catch (error) {
 
+    Swal.fire({
+      icon: "error",
+      title: "Server Error",
+      text: "Try again later"
+    });
+
+  } finally {
+    setLoading(false);
+  }
+};
+
+  /* =========================
+     GOOGLE LOGIN REAL
+  ========================= */
+  const googleLogin = async () => {
+  try {
+    setLoading(true);
+
+    const result = await signInWithPopup(auth, provider);
+    const user = result.user;
+
+    const res = await api("/google-login", "POST", {
+      name: user.displayName,
+      email: user.email,
+      photo: user.photoURL || ""
+    });
+
+    // ✅ ERROR HANDLE SAME AS BACKEND
+    if (!res || res.detail) {
+      Swal.fire({
+        icon: "error",
+        title: "Login Failed",
+        text: res?.detail || "Google login failed"
+      });
+      return;
+    }
+
+    if (res.token) {
+
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("user", res.user);
+      localStorage.setItem("email", res.email);
+      localStorage.setItem("avatar", res.photo || "");
+      localStorage.setItem("plan", res.plan || "Free");
+
+      Swal.fire({
+        icon: "success",
+        title: "Google Login Successful",
+        text: `Welcome ${res.user} 🚀`,
+        timer: 1500,
+        showConfirmButton: false
+      });
+
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 1500);
+
+    } else {
+
+      Swal.fire({
+        icon: "error",
+        title: "Login Failed",
+        text: "Invalid response from server"
+      });
+
+    }
+
+  } catch (error) {
+
+    Swal.fire({
+      icon: "error",
+      title: "Google Login Failed",
+      text: "Please try again."
+    });
+
+  } finally {
+
+    setLoading(false);
+
+  }
+};
   /* =========================
      ENTER KEY LOGIN
   ========================= */

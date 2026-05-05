@@ -2,7 +2,8 @@
 
 import React, {
   useState,
-  useEffect
+  useEffect,
+  useCallback
 } from "react";
 
 import axios from "axios";
@@ -29,8 +30,7 @@ import "./App.css";
 
 function AdminDashboard() {
 
-  const navigate =
-    useNavigate();
+  const navigate = useNavigate();
 
   const BASE_URL =
     "https://careerpilot-backend-rvv1.onrender.com";
@@ -39,52 +39,129 @@ function AdminDashboard() {
      STATE
   ========================= */
 
-  const [users, setUsers] =
-    useState([]);
+  const [users, setUsers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [recentUsers, setRecentUsers] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
-  const [filteredUsers,
-    setFilteredUsers] =
-    useState([]);
+  const [search, setSearch] = useState("");
 
-  const [recentUsers,
-    setRecentUsers] =
-    useState([]);
+  const [loading, setLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
-  const [notifications,
-    setNotifications] =
-    useState([]);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    premiumUsers: 0,
+    reports: 0,
+    todayUsers: 0
+  });
 
-  const [search,
-    setSearch] =
-    useState("");
+  const [growthData, setGrowthData] = useState([]);
+  const [reportsData, setReportsData] = useState([]);
 
-  const [loading,
-    setLoading] =
-    useState(true);
+  const [announcement, setAnnouncement] = useState("");
 
-  const [exporting,
-    setExporting] =
-    useState(false);
+  /* =========================
+     AUTH HEADER
+  ========================= */
 
-  const [stats, setStats] =
-    useState({
-      totalUsers: 0,
-      premiumUsers: 0,
-      reports: 0,
-      todayUsers: 0
-    });
+  const authHeaders = () => {
+    const token = localStorage.getItem("token");
+    return {
+      Authorization: `Bearer ${token}`
+    };
+  };
 
-  const [growthData,
-    setGrowthData] =
-    useState([]);
+  /* =========================
+     LOAD DASHBOARD
+  ========================= */
 
-  const [reportsData,
-    setReportsData] =
-    useState([]);
+  const loadDashboard = useCallback(async () => {
+    try {
 
-  const [announcement,
-    setAnnouncement] =
-    useState("");
+      setLoading(true);
+
+      const headers = authHeaders();
+
+      const statsRes =
+        await axios.get(`${BASE_URL}/admin/stats`, { headers });
+
+      const usersRes =
+        await axios.get(`${BASE_URL}/admin/users`, { headers });
+
+      const chartRes =
+        await axios.get(`${BASE_URL}/admin/chart-data`, { headers });
+
+      const recentRes =
+        await axios.get(`${BASE_URL}/admin/recent-signups`, { headers });
+
+      const allUsers =
+        usersRes.data.users || [];
+
+      setStats({
+        totalUsers: statsRes.data.users || 0,
+        premiumUsers: statsRes.data.premium_users || 0,
+        reports: statsRes.data.reports || 0,
+        todayUsers: statsRes.data.today_signups || 0
+      });
+
+      setUsers(allUsers);
+      setFilteredUsers(allUsers);
+
+      setRecentUsers(
+        recentRes.data.recent_users || []
+      );
+
+      setGrowthData(
+        chartRes.data.growth || []
+      );
+
+      setReportsData(
+        chartRes.data.reports || []
+      );
+
+    } catch {
+
+      localStorage.clear();
+
+      Swal.fire({
+        icon: "error",
+        title: "Session Expired"
+      });
+
+      navigate("/");
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  }, [navigate]);
+
+  /* =========================
+     LOAD NOTIFICATIONS
+  ========================= */
+
+  const loadNotifications = useCallback(async () => {
+    try {
+
+      const res =
+        await axios.get(
+          `${BASE_URL}/admin/notifications`,
+          { headers: authHeaders() }
+        );
+
+      setNotifications(
+        res.data.notifications || []
+      );
+
+    } catch {
+
+      setNotifications([]);
+
+    }
+  }, []);
 
   /* =========================
      ADMIN SECURITY
@@ -93,37 +170,53 @@ function AdminDashboard() {
   useEffect(() => {
 
     const token =
-      localStorage.getItem(
-        "token"
-      );
+      localStorage.getItem("token");
 
     const email =
-      localStorage.getItem(
-        "email"
-      );
+      localStorage.getItem("email");
 
-    if (
-      !token ||
-      email !==
-      "admin@careerpilot.ai"
-    ) {
+    if (!token || email !== "admin@careerpilot.ai") {
 
       Swal.fire({
         icon: "warning",
-        title:
-          "Access Denied",
-        text:
-          "Admin only area."
+        title: "Access Denied",
+        text: "Admin only area."
       });
 
       navigate("/");
       return;
     }
 
-    loadDashboard();
-    loadNotifications();
+    const verifyAdmin = async () => {
+      try {
 
-  }, [navigate]);
+        const res =
+          await axios.get(
+            `${BASE_URL}/verify-token`,
+            { headers: authHeaders() }
+          );
+
+        if (!res.valid) throw new Error();
+
+        loadDashboard();
+        loadNotifications();
+
+      } catch {
+
+        localStorage.clear();
+
+        Swal.fire({
+          icon: "error",
+          title: "Session Expired"
+        });
+
+        navigate("/");
+      }
+    };
+
+    verifyAdmin();
+
+  }, [navigate, loadDashboard, loadNotifications]);
 
   /* =========================
      AUTO REFRESH
@@ -133,197 +226,36 @@ function AdminDashboard() {
 
     const interval =
       setInterval(() => {
-
         loadDashboard();
         loadNotifications();
-
       }, 15000);
 
-    return () =>
-      clearInterval(
-        interval
-      );
+    return () => clearInterval(interval);
 
-  }, []);
+  }, [loadDashboard, loadNotifications]);
 
   /* =========================
-     COMMON HEADERS
-  ========================= */
-
-  const authHeaders =
-    () => {
-
-      const token =
-        localStorage.getItem(
-          "token"
-        );
-
-      return {
-        Authorization:
-          `Bearer ${token}`
-      };
-
-    };
-
-  /* =========================
-     LOAD DASHBOARD
-  ========================= */
-
-  const loadDashboard =
-    async () => {
-
-      try {
-
-        setLoading(true);
-
-        const headers =
-          authHeaders();
-
-        const statsRes =
-          await axios.get(
-            `${BASE_URL}/admin/stats`,
-            { headers }
-          );
-
-        const usersRes =
-          await axios.get(
-            `${BASE_URL}/admin/users`,
-            { headers }
-          );
-
-        const chartRes =
-          await axios.get(
-            `${BASE_URL}/admin/chart-data`,
-            { headers }
-          );
-
-        const recentRes =
-          await axios.get(
-            `${BASE_URL}/admin/recent-signups`,
-            { headers }
-          );
-
-        const allUsers =
-          usersRes.data.users || [];
-
-        setStats({
-          totalUsers:
-            statsRes.data.users || 0,
-          premiumUsers:
-            statsRes.data.premium_users || 0,
-          reports:
-            statsRes.data.reports || 0,
-          todayUsers:
-            statsRes.data.today_signups || 0
-        });
-
-        setUsers(
-          allUsers
-        );
-
-        setFilteredUsers(
-          allUsers
-        );
-
-        setRecentUsers(
-          recentRes.data.recent_users || []
-        );
-
-        setGrowthData(
-          chartRes.data.growth || []
-        );
-
-        setReportsData(
-          chartRes.data.reports || []
-        );
-
-      } catch (error) {
-
-        localStorage.clear();
-        navigate("/");
-
-      } finally {
-
-        setLoading(false);
-
-      }
-
-    };
-    // continued...
-
-  /* =========================
-     LIVE NOTIFICATIONS
-  ========================= */
-
-  const loadNotifications =
-    async () => {
-
-      try {
-
-        const headers =
-          authHeaders();
-
-        const res =
-          await axios.get(
-            `${BASE_URL}/admin/notifications`,
-            { headers }
-          );
-
-        setNotifications(
-          res.data.notifications || []
-        );
-
-      } catch {
-
-        setNotifications([]);
-
-      }
-
-    };
-
-  /* =========================
-     FAST SEARCH
+     SEARCH
   ========================= */
 
   useEffect(() => {
 
     const keyword =
-      search
-        .toLowerCase()
-        .trim();
+      search.toLowerCase().trim();
 
     if (!keyword) {
-
-      setFilteredUsers(
-        users
-      );
-
+      setFilteredUsers(users);
       return;
     }
 
     const result =
-      users.filter(
-        (item) =>
-          item.name
-            .toLowerCase()
-            .includes(
-              keyword
-            ) ||
-          item.email
-            .toLowerCase()
-            .includes(
-              keyword
-            ) ||
-          item.plan
-            .toLowerCase()
-            .includes(
-              keyword
-            )
+      users.filter((item) =>
+        item.name.toLowerCase().includes(keyword) ||
+        item.email.toLowerCase().includes(keyword) ||
+        item.plan.toLowerCase().includes(keyword)
       );
 
-    setFilteredUsers(
-      result
-    );
+    setFilteredUsers(result);
 
   }, [search, users]);
 
@@ -331,415 +263,223 @@ function AdminDashboard() {
      DELETE USER
   ========================= */
 
-  const deleteUser =
-    async (id) => {
+  const deleteUser = async (id) => {
 
-      const confirm =
-        await Swal.fire({
-          icon: "warning",
-          title:
-            "Delete User?",
-          text:
-            "This action cannot be undone.",
-          showCancelButton:
-            true,
-          confirmButtonText:
-            "Delete"
-        });
+    const confirm =
+      await Swal.fire({
+        icon: "warning",
+        title: "Delete User?",
+        text: "This action cannot be undone.",
+        showCancelButton: true,
+        confirmButtonText: "Delete"
+      });
 
-      if (
-        !confirm.isConfirmed
-      ) return;
+    if (!confirm.isConfirmed) return;
 
-      try {
+    try {
 
-        await axios.delete(
-          `${BASE_URL}/admin/delete-user/${id}`,
-          {
-            headers:
-              authHeaders()
-          }
-        );
+      await axios.delete(
+        `${BASE_URL}/admin/delete-user/${id}`,
+        { headers: authHeaders() }
+      );
 
-        Swal.fire({
-          icon: "success",
-          title:
-            "Deleted",
-          text:
-            "User removed successfully."
-        });
+      Swal.fire({
+        icon: "success",
+        title: "Deleted"
+      });
 
-        loadDashboard();
+      loadDashboard();
 
-      } catch {
+    } catch {
 
-        Swal.fire({
-          icon: "error",
-          title:
-            "Delete Failed"
-        });
+      Swal.fire({
+        icon: "error",
+        title: "Delete Failed"
+      });
 
-      }
+    }
 
-    };
+  };
 
   /* =========================
      TOGGLE PLAN
   ========================= */
 
-  const togglePlan =
-    async (id) => {
+  const togglePlan = async (id) => {
 
-      try {
+    try {
 
-        await axios.put(
-          `${BASE_URL}/admin/toggle-plan/${id}`,
-          {},
-          {
-            headers:
-              authHeaders()
-          }
-        );
+      await axios.put(
+        `${BASE_URL}/admin/toggle-plan/${id}`,
+        {},
+        { headers: authHeaders() }
+      );
 
-        Swal.fire({
-          icon: "success",
-          title:
-            "Plan Updated"
-        });
+      Swal.fire({
+        icon: "success",
+        title: "Plan Updated"
+      });
 
-        loadDashboard();
+      loadDashboard();
 
-      } catch {
+    } catch {
 
-        Swal.fire({
-          icon: "error",
-          title:
-            "Update Failed"
-        });
+      Swal.fire({
+        icon: "error",
+        title: "Update Failed"
+      });
 
-      }
+    }
 
-    };
+  };
 
   /* =========================
-     BROADCAST MESSAGE
+     BROADCAST
   ========================= */
 
-  const sendAnnouncement =
-    async () => {
+  const sendAnnouncement = async () => {
 
-      if (
-        !announcement.trim()
-      ) {
+    if (!announcement.trim()) {
 
-        Swal.fire({
-          icon: "warning",
-          title:
-            "Empty Message",
-          text:
-            "Please write announcement."
-        });
+      Swal.fire({
+        icon: "warning",
+        title: "Empty Message"
+      });
 
-        return;
-      }
+      return;
+    }
 
-      try {
+    try {
 
-        await axios.post(
-          `${BASE_URL}/admin/broadcast`,
-          {
-            message:
-              announcement
-          },
-          {
-            headers:
-              authHeaders()
-          }
-        );
+      await axios.post(
+        `${BASE_URL}/admin/broadcast`,
+        { message: announcement },
+        { headers: authHeaders() }
+      );
 
-        Swal.fire({
-          icon: "success",
-          title:
-            "Broadcast Sent"
-        });
+      Swal.fire({
+        icon: "success",
+        title: "Broadcast Sent"
+      });
 
-        setAnnouncement("");
+      setAnnouncement("");
+      loadNotifications();
 
-        loadNotifications();
+    } catch {
 
-      } catch {
+      Swal.fire({
+        icon: "error",
+        title: "Broadcast Failed"
+      });
 
-        Swal.fire({
-          icon: "error",
-          title:
-            "Broadcast Failed"
-        });
+    }
 
-      }
-
-    };
-    // continued...
+  };
 
   /* =========================
      EXPORT CSV
   ========================= */
 
-  const exportUsersCSV =
-    async () => {
+  const exportUsersCSV = async () => {
 
-      try {
+    try {
 
-        setExporting(true);
+      setExporting(true);
 
-        let csv =
+      let csv =
 `ID,Name,Email,Plan,Created At\n`;
 
-        users.forEach(
-          (item) => {
+      users.forEach((u) => {
+        csv += `"${u.id}","${u.name}","${u.email}","${u.plan}","${u.created_at}"\n`;
+      });
 
-            csv +=
-`${item.id},${item.name},${item.email},${item.plan},${item.created_at}\n`;
+      const blob =
+        new Blob([csv], { type: "text/csv" });
 
-          }
-        );
+      const url =
+        URL.createObjectURL(blob);
 
-        const blob =
-          new Blob(
-            [csv],
-            {
-              type:
-              "text/csv;charset=utf-8;"
-            }
-          );
+      const a =
+        document.createElement("a");
 
-        const url =
-          window.URL
-            .createObjectURL(
-              blob
-            );
+      a.href = url;
+      a.download = "users.csv";
+      a.click();
 
-        const link =
-          document.createElement(
-            "a"
-          );
+    } finally {
 
-        link.href = url;
+      setExporting(false);
 
-        link.setAttribute(
-          "download",
-          "careerpilot_users.csv"
-        );
+    }
 
-        document.body
-          .appendChild(
-            link
-          );
-
-        link.click();
-
-        link.remove();
-
-      } finally {
-
-        setExporting(false);
-
-      }
-
-    };
+  };
 
   /* =========================
      LOGOUT
   ========================= */
 
-  const logoutAdmin =
-    () => {
-
-      localStorage.clear();
-
-      navigate("/");
-
-    };
+  const logoutAdmin = () => {
+    localStorage.clear();
+    navigate("/");
+  };
 
   /* =========================
-     UI START
+     UI
   ========================= */
 
   return (
     <div className="mainAppTheme">
-
-      <div
-        className="container dashboardWrap"
-        style={{
-          background:
-            "linear-gradient(180deg,#08110b,#122118)",
-          minHeight:
-            "100vh"
-        }}
-      >
-
-        <div
-          style={{
-            width: "100%",
-            maxWidth: "1280px"
-          }}
-        >
+      <div className="container dashboardWrap">
+        <div style={{ maxWidth: "1280px", width: "100%" }}>
 
           <Navbar />
 
-          {/* HERO */}
-
-          <div className="result heroBanner">
-
-            <div className="heroLeft">
-
-              <span className="heroTag">
-                🛡️ Premium Admin
-              </span>
-
-              <h2 className="heroTitle">
-                Manage Platform
-              </h2>
-
-              <p className="heroText">
-                Real users, charts,
-                reports and business
-                control center.
-              </p>
-
-            </div>
-
-            <div className="heroRight">
-
-              <div className="statCard">
-
-                <span>🚀</span>
-
-                <h3>
-                  CareerPilot
-                </h3>
-
-                <p>
-                  SaaS Control Room
-                </p>
-
-              </div>
-
-            </div>
-
-          </div>
-
-          {/* MAIN CARD */}
-
           <div className="card">
 
-            <h1>
-              🛡️ Admin Dashboard
-            </h1>
-
-            <p className="subtitle">
-              Full real-time analytics
-              and user management.
-            </p>
+            <h1>Admin Dashboard</h1>
 
             {loading ? (
 
-              <p>
-                Loading Dashboard...
-              </p>
+              <p>Loading...</p>
 
             ) : (
 
-              <>// continued...
-
-                {/* STATS */}
+              <>
 
                 <div className="statsGrid">
 
                   <div className="statCard">
-                    <span>👥</span>
                     <h3>{stats.totalUsers}</h3>
-                    <p>Total Users</p>
+                    <p>Users</p>
                   </div>
 
                   <div className="statCard">
-                    <span>⭐</span>
                     <h3>{stats.premiumUsers}</h3>
-                    <p>Premium Users</p>
+                    <p>Premium</p>
                   </div>
 
                   <div className="statCard">
-                    <span>📄</span>
                     <h3>{stats.reports}</h3>
                     <p>Reports</p>
                   </div>
 
                   <div className="statCard">
-                    <span>📈</span>
                     <h3>{stats.todayUsers}</h3>
-                    <p>Today Users</p>
+                    <p>Today</p>
                   </div>
 
                 </div>
-
-                {/* TOP ACTIONS */}
-
-                <div
-                  className="btnRow"
-                  style={{
-                    marginTop:"16px"
-                  }}
-                >
-
-                  <button
-                    onClick={
-                      exportUsersCSV
-                    }
-                    disabled={
-                      exporting
-                    }
-                  >
-                    {
-                      exporting
-                      ? "Exporting..."
-                      : "Export CSV"
-                    }
-                  </button>
-
-                  <button
-                    onClick={
-                      loadDashboard
-                    }
-                  >
-                    Refresh
-                  </button>
-
-                </div>
-
-                {/* CHARTS */}
 
                 <div className="chartsGrid">
 
                   <div className="result">
 
-                    <h2>User Growth</h2>
-
-                    <ResponsiveContainer
-                      width="100%"
-                      height={260}
-                    >
-                      <LineChart
-                        data={growthData}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
+                    <ResponsiveContainer width="100%" height={250}>
+                      <LineChart data={growthData}>
                         <XAxis dataKey="month" />
                         <YAxis />
                         <Tooltip />
-                        <Line
-                          type="monotone"
-                          dataKey="users"
-                          stroke="#7cd67f"
-                          strokeWidth={3}
-                        />
+                        <Line dataKey="users" stroke="#7cd67f" />
                       </LineChart>
                     </ResponsiveContainer>
 
@@ -747,24 +487,12 @@ function AdminDashboard() {
 
                   <div className="result">
 
-                    <h2>Reports Stats</h2>
-
-                    <ResponsiveContainer
-                      width="100%"
-                      height={260}
-                    >
-                      <BarChart
-                        data={reportsData}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" />
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={reportsData}>
                         <XAxis dataKey="name" />
                         <YAxis />
                         <Tooltip />
-                        <Bar
-                          dataKey="count"
-                          fill="#8fdcff"
-                          radius={[8,8,0,0]}
-                        />
+                        <Bar dataKey="count" fill="#8fdcff" />
                       </BarChart>
                     </ResponsiveContainer>
 
@@ -772,220 +500,90 @@ function AdminDashboard() {
 
                 </div>
 
-                {/* LIVE NOTIFICATIONS */}
+                <input
+                  placeholder="Search user"
+                  value={search}
+                  onChange={(e) =>
+                    setSearch(e.target.value)
+                  }
+                />
 
-                <div className="result">
+                {filteredUsers.map((u) => (
 
-                  <h2>
-                    🔔 Live Notifications
-                  </h2>
+                  <div
+                    key={u.id}
+                    className="softPanel"
+                    style={{ marginTop: "12px" }}
+                  >
 
-                  {notifications.map(
-                    (item) => (
-                      <div
-                        key={item.id}
-                        className="softPanel"
+                    <p>
+                      <strong>{u.name}</strong>
+                    </p>
+
+                    <p>{u.email}</p>
+
+                    <p>Plan: {u.plan}</p>
+
+                    <div style={{ display: "flex", gap: "10px" }}>
+
+                      <button
+                        className="btnSm"
+                        onClick={() => togglePlan(u.id)}
+                      >
+                        Toggle Plan
+                      </button>
+
+                      <button
+                        className="btnSm"
+                        onClick={() => deleteUser(u.id)}
                         style={{
-                          marginTop:"10px"
+                          background: "#fff2f2",
+                          color: "#e03131"
                         }}
                       >
-                        <p>{item.text}</p>
-                        <small>{item.time}</small>
-                      </div>
-                    )
-                  )}
+                        Delete User
+                      </button>
 
-                </div>
+                    </div>
 
-                {/* BROADCAST */}
+                  </div>
 
-                <div className="result">
+                ))}
 
-                  <h2>
-                    📢 Broadcast Message
-                  </h2>
+                <textarea
+                  rows="4"
+                  placeholder="Write announcement..."
+                  value={announcement}
+                  onChange={(e) =>
+                    setAnnouncement(e.target.value)
+                  }
+                />
 
-                  <textarea
-                    rows="4"
-                    placeholder="Write announcement for all users..."
-                    value={announcement}
-                    onChange={(e)=>
-                      setAnnouncement(
-                        e.target.value
-                      )
-                    }
-                  />
+                <button
+                  onClick={sendAnnouncement}
+                  disabled={!announcement.trim()}
+                >
+                  Broadcast
+                </button>
 
-                  <button
-                    onClick={
-                      sendAnnouncement
-                    }
-                  >
-                    Send Broadcast
-                  </button>
+                <button
+                  onClick={exportUsersCSV}
+                  disabled={exporting}
+                >
+                  {exporting ? "Exporting..." : "Export CSV"}
+                </button>
 
-                </div>
-
-                {/* RECENT SIGNUPS */}
-
-                <div className="result">
-
-                  <h2>
-                    🆕 Recent Signups
-                  </h2>
-
-                  {recentUsers.map(
-                    (user)=>(
-                      <div
-                        key={user.id}
-                        className="softPanel"
-                        style={{
-                          marginTop:"10px"
-                        }}
-                      >
-                        <p>
-                          <strong>
-                            {user.name}
-                          </strong>
-                        </p>
-                        <p>{user.email}</p>
-                        <small>
-                          {user.created_at}
-                        </small>
-                      </div>
-                    )
-                  )}
-
-                </div>
-
-                {/* USER MANAGEMENT */}
-
-                <div className="result">
-
-                  <h2>
-                    👥 User Management
-                  </h2>
-
-                  <input
-                    type="text"
-                    placeholder="Search user..."
-                    value={search}
-                    onChange={(e)=>
-                      setSearch(
-                        e.target.value
-                      )
-                    }
-                  />
-
-                  {filteredUsers.map(
-                    (user)=>(
-                      <div
-                        key={user.id}
-                        className="softPanel"
-                        style={{
-                          marginTop:"14px"
-                        }}
-                      >
-                        <p>
-                          <strong>
-                            {user.name}
-                          </strong>
-                        </p>
-
-                        <p>{user.email}</p>
-
-                        <p>
-                          Plan: {user.plan}
-                        </p>
-
-                        <div
-                          style={{
-                            display:"flex",
-                            gap:"10px",
-                            flexWrap:"wrap",
-                            marginTop:"10px"
-                          }}
-                        >
-
-                          <button
-                            className="btnSm"
-                            onClick={()=>
-                              togglePlan(
-                                user.id
-                              )
-                            }
-                          >
-                            Toggle Plan
-                          </button>
-
-                          <button
-                            className="btnSm"
-                            onClick={()=>
-                              deleteUser(
-                                user.id
-                              )
-                            }
-                            style={{
-                              background:"#fff2f2",
-                              color:"#e03131"
-                            }}
-                          >
-                            Delete User
-                          </button>
-
-                        </div>
-                      </div>
-                    )
-                  )}
-
-                </div>
-
-                {/* FOOTER ACTIONS */}
-
-                <div className="btnRow">
-
-                  <button
-                    onClick={()=>
-                      navigate(
-                        "/dashboard"
-                      )
-                    }
-                  >
-                    User Dashboard
-                  </button>
-
-                  <button
-                    onClick={
-                      logoutAdmin
-                    }
-                  >
-                    Logout
-                  </button>
-
-                </div>
+                <button onClick={logoutAdmin}>
+                  Logout
+                </button>
 
               </>
-
             )}
-
-            <p
-              style={{
-                textAlign:"center",
-                marginTop:"18px",
-                color:"#94a398",
-                fontSize:"13px"
-              }}
-            >
-              CareerPilot Admin •
-              Premium Control Center
-            </p>
 
           </div>
 
         </div>
-
       </div>
-
     </div>
   );
 }

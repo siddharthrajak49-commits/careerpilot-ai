@@ -25,6 +25,8 @@ import {
   Legend
 } from "recharts";
 
+import { api } from "./api";
+
 import Navbar from "./Navbar";
 import "./App.css";
 
@@ -45,13 +47,113 @@ function Analytics() {
       avgATS: 0
     });
 
+  const [growthData, setGrowthData] =
+    useState([]);
+
+  const [planData, setPlanData] =
+    useState([]);
+
+  const [loading, setLoading] =
+    useState(false);
+
   /* =========================
      LOAD DATA
   ========================= */
 
   useEffect(() => {
 
-    // Replace later with backend API
+    loadAnalytics();
+    trackPage();
+
+  }, []);
+
+  /* =========================
+     TRACK PAGE
+  ========================= */
+
+  const trackPage = async () => {
+    try {
+      await api("/track-page", "POST", {
+        page: "analytics"
+      });
+    } catch {}
+  };
+
+  /* =========================
+     MAIN LOAD
+  ========================= */
+
+  const loadAnalytics = async () => {
+
+    try {
+
+      setLoading(true);
+
+      // PUBLIC ANALYTICS
+      const res =
+        await api("/analytics");
+
+      setStats({
+        users: res.total_users || 0,
+        reports: res.reports_generated || 0,
+        premium: res.premium_users || 0,
+        avgATS: res.avg_ats_score || 0
+      });
+
+      // ADMIN CHART DATA (SAFE TRY)
+      try {
+
+        const chart =
+          await api("/admin/chart-data");
+
+        if (chart?.growth) {
+          setGrowthData(chart.growth);
+        }
+
+        if (chart?.reports) {
+
+          setPlanData([
+            {
+              name: "Reports",
+              value:
+                chart.reports[0]?.count || 0
+            },
+            {
+              name: "Premium",
+              value:
+                chart.reports[1]?.count || 0
+            },
+            {
+              name: "Today",
+              value:
+                chart.reports[2]?.count || 0
+            }
+          ]);
+
+        }
+
+      } catch {
+        fallbackCharts();
+      }
+
+    } catch {
+
+      fallbackStats();
+      fallbackCharts();
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  };
+
+  /* =========================
+     FALLBACK STATS
+  ========================= */
+
+  const fallbackStats = () => {
 
     setStats({
       users: 1240,
@@ -60,20 +162,33 @@ function Analytics() {
       avgATS: 74
     });
 
-  }, []);
+  };
 
   /* =========================
-     CHART DATA
+     FALLBACK CHARTS
   ========================= */
 
-  const growthData = [
-    { month: "Jan", users: 120, reports: 220 },
-    { month: "Feb", users: 180, reports: 310 },
-    { month: "Mar", users: 260, reports: 480 },
-    { month: "Apr", users: 410, reports: 710 },
-    { month: "May", users: 680, reports: 1100 },
-    { month: "Jun", users: 1240, reports: 3890 }
-  ];
+  const fallbackCharts = () => {
+
+    setGrowthData([
+      { month: "Jan", users: 120, reports: 220 },
+      { month: "Feb", users: 180, reports: 310 },
+      { month: "Mar", users: 260, reports: 480 },
+      { month: "Apr", users: 410, reports: 710 },
+      { month: "May", users: 680, reports: 1100 },
+      { month: "Jun", users: 1240, reports: 3890 }
+    ]);
+
+    setPlanData([
+      { name: "Free", value: 920 },
+      { name: "Premium", value: 320 }
+    ]);
+
+  };
+
+  /* =========================
+     ATS TREND (STATIC SAFE)
+  ========================= */
 
   const atsTrend = [
     { week: "W1", score: 61 },
@@ -82,20 +197,10 @@ function Analytics() {
     { week: "W4", score: 74 }
   ];
 
-  const planData = [
-    {
-      name: "Free",
-      value: 920
-    },
-    {
-      name: "Premium",
-      value: 320
-    }
-  ];
-
   const chartColors = [
     "#7cd67f",
-    "#8fdcff"
+    "#8fdcff",
+    "#ffd43b"
   ];
 
   /* =========================
@@ -123,7 +228,7 @@ function Analytics() {
             <div className="heroLeft">
 
               <span className="heroTag">
-                📊 Analytics Center
+                Analytics Center
               </span>
 
               <h2 className="heroTitle">
@@ -138,32 +243,14 @@ function Analytics() {
 
             </div>
 
-            <div className="heroRight">
-
-              <div className="statCard">
-
-                <span>🚀</span>
-
-                <h3>
-                  Live Data
-                </h3>
-
-                <p>
-                  Smart Decisions
-                </p>
-
-              </div>
-
-            </div>
-
           </div>
 
-          {/* MAIN CARD */}
+          {/* MAIN */}
 
           <div className="card">
 
             <h1>
-              📈 Analytics Dashboard
+              Analytics Dashboard
             </h1>
 
             <p className="subtitle">
@@ -171,320 +258,136 @@ function Analytics() {
               and performance.
             </p>
 
+            {/* LOADING */}
+
+            {loading && (
+              <p style={{ textAlign: "center" }}>
+                Loading analytics...
+              </p>
+            )}
+
             {/* STATS */}
 
             <div className="statsGrid">
 
               <div className="statCard">
-                <span>👥</span>
-                <h3>
-                  {stats.users}
-                </h3>
-                <p>
-                  Total Users
-                </p>
+                <span>Users</span>
+                <h3>{stats.users}</h3>
+                <p>Total Users</p>
               </div>
 
               <div className="statCard">
-                <span>📄</span>
-                <h3>
-                  {stats.reports}
-                </h3>
-                <p>
-                  Reports Generated
-                </p>
+                <span>Reports</span>
+                <h3>{stats.reports}</h3>
+                <p>Reports Generated</p>
               </div>
 
               <div className="statCard">
-                <span>⭐</span>
-                <h3>
-                  {stats.premium}
-                </h3>
-                <p>
-                  Premium Users
-                </p>
+                <span>Premium</span>
+                <h3>{stats.premium}</h3>
+                <p>Premium Users</p>
               </div>
 
               <div className="statCard">
-                <span>🎯</span>
-                <h3>
-                  {stats.avgATS}
-                </h3>
-                <p>
-                  Avg ATS Score
-                </p>
+                <span>ATS</span>
+                <h3>{stats.avgATS}</h3>
+                <p>Avg ATS Score</p>
               </div>
 
             </div>
 
-            {/* CHARTS ROW 1 */}
+            {/* CHARTS 1 */}
 
             <div className="chartsGrid">
 
-              {/* User Growth */}
-
               <div className="result">
 
-                <h2>
-                  User Growth
-                </h2>
+                <h2>User Growth</h2>
 
-                <ResponsiveContainer
-                  width="100%"
-                  height={280}
-                >
-
-                  <LineChart
-                    data={
-                      growthData
-                    }
-                  >
-
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                    />
-
-                    <XAxis
-                      dataKey="month"
-                    />
-
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={growthData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
                     <YAxis />
-
                     <Tooltip />
-
                     <Legend />
-
-                    <Line
-                      type="monotone"
-                      dataKey="users"
-                      stroke="#7cd67f"
-                      strokeWidth={3}
-                    />
-
+                    <Line type="monotone" dataKey="users" stroke="#7cd67f" strokeWidth={3} />
                   </LineChart>
-
                 </ResponsiveContainer>
 
               </div>
 
-              {/* Reports */}
-
               <div className="result">
 
-                <h2>
-                  Reports Growth
-                </h2>
+                <h2>Reports Growth</h2>
 
-                <ResponsiveContainer
-                  width="100%"
-                  height={280}
-                >
-
-                  <BarChart
-                    data={
-                      growthData
-                    }
-                  >
-
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                    />
-
-                    <XAxis
-                      dataKey="month"
-                    />
-
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={growthData}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="month" />
                     <YAxis />
-
                     <Tooltip />
-
-                    <Bar
-                      dataKey="reports"
-                      fill="#8fdcff"
-                      radius={[
-                        8, 8, 0, 0
-                      ]}
-                    />
-
+                    <Bar dataKey="reports" fill="#8fdcff" radius={[8, 8, 0, 0]} />
                   </BarChart>
-
                 </ResponsiveContainer>
 
               </div>
 
             </div>
 
-            {/* CHARTS ROW 2 */}
+            {/* CHARTS 2 */}
 
             <div className="chartsGrid">
 
-              {/* ATS Trend */}
-
               <div className="result">
 
-                <h2>
-                  ATS Trend
-                </h2>
+                <h2>ATS Trend</h2>
 
-                <ResponsiveContainer
-                  width="100%"
-                  height={280}
-                >
-
-                  <LineChart
-                    data={atsTrend}
-                  >
-
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                    />
-
-                    <XAxis
-                      dataKey="week"
-                    />
-
+                <ResponsiveContainer width="100%" height={280}>
+                  <LineChart data={atsTrend}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="week" />
                     <YAxis />
-
                     <Tooltip />
-
-                    <Line
-                      type="monotone"
-                      dataKey="score"
-                      stroke="#7cd67f"
-                      strokeWidth={3}
-                    />
-
+                    <Line type="monotone" dataKey="score" stroke="#7cd67f" strokeWidth={3} />
                   </LineChart>
-
                 </ResponsiveContainer>
 
               </div>
 
-              {/* Plans */}
-
               <div className="result">
 
-                <h2>
-                  User Plans
-                </h2>
+                <h2>Distribution</h2>
 
-                <ResponsiveContainer
-                  width="100%"
-                  height={280}
-                >
-
+                <ResponsiveContainer width="100%" height={280}>
                   <PieChart>
-
-                    <Pie
-                      data={planData}
-                      dataKey="value"
-                      outerRadius={95}
-                    >
-
-                      {chartColors.map(
-                        (
-                          color,
-                          index
-                        ) => (
-
-                          <Cell
-                            key={index}
-                            fill={color}
-                          />
-
-                        )
-                      )}
-
+                    <Pie data={planData} dataKey="value" outerRadius={95}>
+                      {planData.map((_, index) => (
+                        <Cell key={index} fill={chartColors[index % chartColors.length]} />
+                      ))}
                     </Pie>
-
                     <Tooltip />
                     <Legend />
-
                   </PieChart>
-
                 </ResponsiveContainer>
 
               </div>
 
             </div>
 
-            {/* INSIGHTS */}
-
-            <div className="result">
-
-              <h2>
-                🤖 AI Insights
-              </h2>
-
-              <ul>
-
-                <li>
-                  Premium users are
-                  growing steadily.
-                </li>
-
-                <li>
-                  Average ATS score
-                  improved this month.
-                </li>
-
-                <li>
-                  Reports generated
-                  increased sharply.
-                </li>
-
-                <li>
-                  June had highest
-                  user signup growth.
-                </li>
-
-              </ul>
-
-            </div>
-
-            {/* ACTIONS */}
+            {/* ACTION */}
 
             <div className="btnRow">
 
-              <button
-                onClick={() =>
-                  navigate(
-                    "/dashboard"
-                  )
-                }
-              >
-                User Dashboard
+              <button onClick={() => navigate("/dashboard")}>
+                Dashboard
               </button>
 
-              <button
-                onClick={() =>
-                  navigate(
-                    "/admin"
-                  )
-                }
-              >
+              <button onClick={() => navigate("/admin")}>
                 Admin Panel
               </button>
 
             </div>
-
-            {/* FOOTER */}
-
-            <p
-              style={{
-                textAlign:
-                  "center",
-                marginTop:
-                  "18px",
-                color:
-                  "#94a398",
-                fontSize:
-                  "13px"
-              }}
-            >
-              CareerPilot Analytics •
-              Data Driven Growth
-            </p>
 
           </div>
 

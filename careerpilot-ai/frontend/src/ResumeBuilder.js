@@ -1,16 +1,15 @@
 // src/ResumeBuilder.js
 
 import React, {
-  useState
+  useState,
+  useEffect
 } from "react";
 
 import Swal from "sweetalert2";
-
-import {
-  useNavigate
-} from "react-router-dom";
-
+import { useNavigate } from "react-router-dom";
 import jsPDF from "jspdf";
+
+import { api } from "./api";   // ✅ backend connect
 
 import Navbar from "./Navbar";
 import "./App.css";
@@ -38,16 +37,69 @@ function ResumeBuilder() {
     });
 
   /* =========================
+     LOAD DATA (PROFILE + LOCAL)
+  ========================= */
+
+  useEffect(() => {
+
+    loadProfile();
+    loadLocal();
+    trackPage();
+
+  }, []);
+
+  const loadProfile = async () => {
+    try {
+      const res = await api("/me");
+
+      setForm(prev => ({
+        ...prev,
+        fullName: res.name || "",
+        email: res.email || "",
+        phone: res.phone || "",
+        city: res.city || ""
+      }));
+
+    } catch {}
+  };
+
+  const loadLocal = () => {
+    const saved =
+      JSON.parse(
+        localStorage.getItem("resume_builder")
+      );
+
+    if (saved) {
+      setForm(saved);
+    }
+  };
+
+  const trackPage = async () => {
+    try {
+      await api("/track-page", "POST", {
+        page: "resume_builder"
+      });
+    } catch {}
+  };
+
+  /* =========================
      HANDLE CHANGE
   ========================= */
 
   const handleChange = (e) => {
 
-    setForm({
+    const updated = {
       ...form,
       [e.target.name]:
         e.target.value
-    });
+    };
+
+    setForm(updated);
+
+    localStorage.setItem(
+      "resume_builder",
+      JSON.stringify(updated)
+    );
 
   };
 
@@ -58,7 +110,7 @@ function ResumeBuilder() {
   const fillSample =
     () => {
 
-      setForm({
+      const sample = {
         fullName:
           "Siddharth Kumar",
         email:
@@ -77,7 +129,14 @@ function ResumeBuilder() {
           "CareerPilot AI Resume Analyzer, Portfolio Website",
         experience:
           "Frontend Intern - 3 Months"
-      });
+      };
+
+      setForm(sample);
+
+      localStorage.setItem(
+        "resume_builder",
+        JSON.stringify(sample)
+      );
 
       Swal.fire({
         icon: "success",
@@ -96,7 +155,7 @@ function ResumeBuilder() {
   const clearForm =
     () => {
 
-      setForm({
+      const empty = {
         fullName: "",
         email: "",
         phone: "",
@@ -106,7 +165,13 @@ function ResumeBuilder() {
         skills: "",
         projects: "",
         experience: ""
-      });
+      };
+
+      setForm(empty);
+
+      localStorage.removeItem(
+        "resume_builder"
+      );
 
     };
 
@@ -139,6 +204,13 @@ function ResumeBuilder() {
 
       let y = 20;
 
+      const checkPage = () => {
+        if (y > 270) {
+          pdf.addPage();
+          y = 20;
+        }
+      };
+
       pdf.setFontSize(20);
       pdf.text(
         form.fullName,
@@ -163,6 +235,8 @@ function ResumeBuilder() {
       ) => {
 
         if (!value) return;
+
+        checkPage();
 
         pdf.setFontSize(14);
         pdf.text(
@@ -243,8 +317,6 @@ function ResumeBuilder() {
 
           <Navbar />
 
-          {/* HERO */}
-
           <div className="result heroBanner">
 
             <div className="heroLeft">
@@ -285,8 +357,6 @@ function ResumeBuilder() {
 
           </div>
 
-          {/* MAIN */}
-
           <div className="card">
 
             <h1>
@@ -300,141 +370,36 @@ function ResumeBuilder() {
 
             <div className="chartsGrid">
 
-              {/* FORM SIDE */}
-
               <div className="result">
 
                 <h2>
                   Resume Details
                 </h2>
 
-                <input
-                  name="fullName"
-                  placeholder="Full Name"
-                  value={
-                    form.fullName
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
+                <input name="fullName" placeholder="Full Name" value={form.fullName} onChange={handleChange} />
+                <input name="email" placeholder="Email" value={form.email} onChange={handleChange} />
+                <input name="phone" placeholder="Phone" value={form.phone} onChange={handleChange} />
+                <input name="city" placeholder="City" value={form.city} onChange={handleChange} />
 
-                <input
-                  name="email"
-                  placeholder="Email"
-                  value={
-                    form.email
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-
-                <input
-                  name="phone"
-                  placeholder="Phone"
-                  value={
-                    form.phone
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-
-                <input
-                  name="city"
-                  placeholder="City"
-                  value={
-                    form.city
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-
-                <textarea
-                  rows="3"
-                  name="summary"
-                  placeholder="Professional Summary"
-                  value={
-                    form.summary
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-
-                <textarea
-                  rows="2"
-                  name="education"
-                  placeholder="Education"
-                  value={
-                    form.education
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-
-                <textarea
-                  rows="2"
-                  name="skills"
-                  placeholder="Skills"
-                  value={
-                    form.skills
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-
-                <textarea
-                  rows="2"
-                  name="projects"
-                  placeholder="Projects"
-                  value={
-                    form.projects
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
-
-                <textarea
-                  rows="2"
-                  name="experience"
-                  placeholder="Experience"
-                  value={
-                    form.experience
-                  }
-                  onChange={
-                    handleChange
-                  }
-                />
+                <textarea rows="3" name="summary" placeholder="Professional Summary" value={form.summary} onChange={handleChange} />
+                <textarea rows="2" name="education" placeholder="Education" value={form.education} onChange={handleChange} />
+                <textarea rows="2" name="skills" placeholder="Skills" value={form.skills} onChange={handleChange} />
+                <textarea rows="2" name="projects" placeholder="Projects" value={form.projects} onChange={handleChange} />
+                <textarea rows="2" name="experience" placeholder="Experience" value={form.experience} onChange={handleChange} />
 
                 <div className="btnRow">
 
-                  <button
-                    onClick={
-                      fillSample
-                    }
-                  >
+                  <button onClick={fillSample}>
                     Fill Sample
                   </button>
 
-                  <button
-                    onClick={
-                      clearForm
-                    }
-                  >
+                  <button onClick={clearForm}>
                     Clear
                   </button>
 
                 </div>
 
               </div>
-
-              {/* PREVIEW SIDE */}
 
               <div className="result">
 
@@ -443,93 +408,33 @@ function ResumeBuilder() {
                 </h2>
 
                 <h3>
-                  {form.fullName ||
-                    "Your Name"}
+                  {form.fullName || "Your Name"}
                 </h3>
 
                 <p>
-                  {form.email}
-                  {" "}
-                  {form.phone &&
-                    `| ${form.phone}`}
+                  {form.email} {form.phone && `| ${form.phone}`}
                 </p>
 
-                <p>
-                  {form.city}
-                </p>
+                <p>{form.city}</p>
 
-                <hr
-                  style={{
-                    margin:
-                      "14px 0"
-                  }}
-                />
+                <hr style={{ margin: "14px 0" }} />
 
-                <h4>
-                  Summary
-                </h4>
+                <h4>Summary</h4>
+                <p>{form.summary}</p>
 
-                <p>
-                  {form.summary}
-                </p>
+                <h4 style={{ marginTop: "14px" }}>Education</h4>
+                <p>{form.education}</p>
 
-                <h4
-                  style={{
-                    marginTop:
-                      "14px"
-                  }}
-                >
-                  Education
-                </h4>
+                <h4 style={{ marginTop: "14px" }}>Skills</h4>
+                <p>{form.skills}</p>
 
-                <p>
-                  {form.education}
-                </p>
+                <h4 style={{ marginTop: "14px" }}>Projects</h4>
+                <p>{form.projects}</p>
 
-                <h4
-                  style={{
-                    marginTop:
-                      "14px"
-                  }}
-                >
-                  Skills
-                </h4>
+                <h4 style={{ marginTop: "14px" }}>Experience</h4>
+                <p>{form.experience}</p>
 
-                <p>
-                  {form.skills}
-                </p>
-
-                <h4
-                  style={{
-                    marginTop:
-                      "14px"
-                  }}
-                >
-                  Projects
-                </h4>
-
-                <p>
-                  {form.projects}
-                </p>
-
-                <h4
-                  style={{
-                    marginTop:
-                      "14px"
-                  }}
-                >
-                  Experience
-                </h4>
-
-                <p>
-                  {form.experience}
-                </p>
-
-                <button
-                  onClick={
-                    downloadPDF
-                  }
-                >
+                <button onClick={downloadPDF}>
                   Download PDF
                 </button>
 
@@ -537,48 +442,25 @@ function ResumeBuilder() {
 
             </div>
 
-            {/* ACTIONS */}
-
             <div className="btnRow">
 
-              <button
-                onClick={() =>
-                  navigate(
-                    "/dashboard"
-                  )
-                }
-              >
+              <button onClick={() => navigate("/dashboard")}>
                 Dashboard
               </button>
 
-              <button
-                onClick={() =>
-                  navigate(
-                    "/analytics"
-                  )
-                }
-              >
+              <button onClick={() => navigate("/analytics")}>
                 Analytics
               </button>
 
             </div>
 
-            {/* FOOTER */}
-
-            <p
-              style={{
-                textAlign:
-                  "center",
-                marginTop:
-                  "18px",
-                color:
-                  "#94a398",
-                fontSize:
-                  "13px"
-              }}
-            >
-              CareerPilot Resume Builder •
-              ATS Optimized
+            <p style={{
+              textAlign: "center",
+              marginTop: "18px",
+              color: "#94a398",
+              fontSize: "13px"
+            }}>
+              CareerPilot Resume Builder • ATS Optimized
             </p>
 
           </div>
