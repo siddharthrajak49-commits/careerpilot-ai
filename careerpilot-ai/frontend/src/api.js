@@ -8,70 +8,68 @@ export const api = async (
   data = null,
   token = null
 ) => {
+
   try {
 
     const headers = {};
 
-    /* =========================
-       CONTENT TYPE
-    ========================= */
-
+    // CONTENT TYPE
     if (!(data instanceof FormData)) {
-      headers["Content-Type"] = "application/json";
+      headers["Content-Type"] =
+        "application/json";
     }
 
-    /* =========================
-       AUTH TOKEN
-    ========================= */
-
+    // TOKEN
     if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
+      headers["Authorization"] =
+        `Bearer ${token}`;
     }
 
-    /* =========================
-       TIMEOUT CONTROLLER
-    ========================= */
+    // TIMEOUT
+    const controller =
+      new AbortController();
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => {
-      controller.abort();
-    }, 15000); // 15 sec
+    const timeout =
+      setTimeout(() => {
+        controller.abort();
+      }, 15000);
 
-    const res = await fetch(`${BASE_URL}${endpoint}`, {
-      method,
-      headers,
-      body: data
-        ? data instanceof FormData
-          ? data
-          : JSON.stringify(data)
-        : null,
-      signal: controller.signal
-    });
+    const res = await fetch(
+      `${BASE_URL}${endpoint}`,
+      {
+        method,
+        headers,
+        body: data
+          ? data instanceof FormData
+            ? data
+            : JSON.stringify(data)
+          : null,
+        signal: controller.signal
+      }
+    );
 
     clearTimeout(timeout);
-
-    /* =========================
-       SAFE PARSE
-    ========================= */
 
     let result;
 
     try {
+
       result = await res.json();
+
     } catch {
+
       result = {
-        error: "Invalid server response"
+        detail:
+          "Invalid server response"
       };
+
     }
 
-    /* =========================
-       ERROR HANDLE
-    ========================= */
-
+    // ERROR HANDLE
     if (!res.ok) {
 
       return {
-        error:
+        detail:
           result?.detail ||
           result?.message ||
           "Request failed"
@@ -83,18 +81,23 @@ export const api = async (
 
   } catch (err) {
 
-    /* =========================
-       NETWORK ERROR
-    ========================= */
-
     if (err.name === "AbortError") {
-      return { error: "Request timeout" };
+
+      return {
+        detail: "Request timeout"
+      };
+
     }
 
-    console.error("API ERROR:", err);
+    console.error(
+      "API ERROR:",
+      err
+    );
 
     return {
-      error: "Network error"
+      detail: "Network error"
     };
+
   }
+
 };

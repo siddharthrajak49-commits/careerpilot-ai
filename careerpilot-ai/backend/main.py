@@ -103,13 +103,27 @@ app = FastAPI(
 
 app.add_middleware(
     CORSMiddleware,
+
     allow_origins=[
+
         "http://localhost:3000",
+
         "https://careerpilot-frontend-bgde94wmr.vercel.app",
-        "https://careerpilot-frontend.vercel.app"
+
+        "https://careerpilot-frontend.vercel.app",
+
+        "https://careerpilot-frontend-m5atmxu75.vercel.app",
+
+        "https://careerpilot-frontend-git-main-siddharthrajak49-commits-projects.vercel.app",
+
+        "https://careerpilot-frontend-siddharthrajak49-commits-projects.vercel.app"
+
     ],
+
     allow_credentials=True,
+
     allow_methods=["*"],
+
     allow_headers=["*"],
 )
 
