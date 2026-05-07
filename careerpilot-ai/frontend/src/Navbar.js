@@ -1,372 +1,214 @@
 // src/Navbar.js
-import { api } from "./api";
-import React, {
-  useState,
-  useEffect,
-  useRef
-} from "react";
 
-import {
-  Link,
-  useNavigate,
-  useLocation
-} from "react-router-dom";
+import React, { useState, useEffect, useRef } from "react";
+
+import { Link, useNavigate, useLocation } from "react-router-dom";
+
+import { api } from "./api";
 
 function Navbar() {
+  const navigate = useNavigate();
 
-  const navigate =
-    useNavigate();
+  const location = useLocation();
 
-  const location =
-    useLocation();
-
-  const profileRef =
-    useRef(null);
+  const profileRef = useRef(null);
 
   /* =========================
      STATE
   ========================= */
 
-  const [
-    menuOpen,
-    setMenuOpen
-  ] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const [
-    profileOpen,
-    setProfileOpen
-  ] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
 
-  const [
-    scrolled,
-    setScrolled
-  ] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
-  const [
-    userName,
-    setUserName
-  ] = useState("User");
+  const [userName, setUserName] = useState("User");
 
-  const [
-    photo,
-    setPhoto
-  ] = useState("");
+  const [photo, setPhoto] = useState("");
 
-  const [
-    plan,
-    setPlan
-  ] = useState("Free");
+  const [plan, setPlan] = useState("");
 
-  const [
-    email,
-    setEmail
-  ] = useState("");
+  const [email, setEmail] = useState("");
 
   /* =========================
      LOAD USER
   ========================= */
 
-   useEffect(() => {
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const token = localStorage.getItem("token");
 
-  const fetchUser = async () => {
-    try {
+        if (!token) return;
 
-      const token = localStorage.getItem("token");
+        const res = await api("/me", "GET", null, token);
 
-      const res = await api("/me", "GET", null, token);   // ✅ FIXED (token added)
+        setUserName(res.name || "User");
 
-      setUserName(res.name || "User");
-      setPhoto(res.photo || "");
-      setPlan(res.plan || "Free");
-      setEmail(res.email || "");
+        setPhoto(res.photo || localStorage.getItem("avatar") || "");
 
-    } catch {
-      console.log("Navbar user load failed");
-    }
-  };
+        setPlan(res.plan || "");
 
-  fetchUser();
+        setEmail(res.email || "");
+      } catch {
+        setUserName(localStorage.getItem("user") || "User");
 
-}, []);
+        setPhoto(localStorage.getItem("avatar") || "");
+
+        setEmail(localStorage.getItem("email") || "");
+      }
+    };
+
+    fetchUser();
+  }, []);
+  /* =========================
+   REALTIME LOCAL SYNC
+========================= */
+
+  useEffect(() => {
+    const syncUser = () => {
+      setUserName(localStorage.getItem("user") || "User");
+
+      setPhoto(localStorage.getItem("avatar") || "");
+
+      setPlan(localStorage.getItem("plan") || "");
+
+      setEmail(localStorage.getItem("email") || "");
+    };
+
+    window.addEventListener("storage", syncUser);
+
+    syncUser();
+
+    return () => {
+      window.removeEventListener("storage", syncUser);
+    };
+  }, []);
 
   /* =========================
      USER LETTER
   ========================= */
 
-  const firstLetter =
-    userName
-      .charAt(0)
-      .toUpperCase();
+  const firstLetter = userName?.charAt(0)?.toUpperCase() || "U";
 
   /* =========================
      SCROLL EFFECT
   ========================= */
 
   useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
 
-    const handleScroll =
-      () => {
+    window.addEventListener("scroll", handleScroll);
 
-        if (
-          window.scrollY > 20
-        ) {
-
-          setScrolled(true);
-
-        } else {
-
-          setScrolled(false);
-
-        }
-
-      };
-
-    window.addEventListener(
-      "scroll",
-      handleScroll
-    );
-
-    return () =>
-      window.removeEventListener(
-        "scroll",
-        handleScroll
-      );
-
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   /* =========================
-     AUTO CLOSE ON ROUTE
+     CLOSE MENU ON ROUTE
   ========================= */
 
   useEffect(() => {
-
     setMenuOpen(false);
     setProfileOpen(false);
-
   }, [location.pathname]);
 
   /* =========================
-     CLICK OUTSIDE PROFILE
+     CLOSE PROFILE OUTSIDE
   ========================= */
 
   useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (profileRef.current && !profileRef.current.contains(e.target)) {
+        setProfileOpen(false);
+      }
+    };
 
-    const handleClick =
-      (e) => {
+    document.addEventListener("mousedown", handleClickOutside);
 
-        if (
-          profileRef.current &&
-          !profileRef.current.contains(
-            e.target
-          )
-        ) {
-
-          setProfileOpen(false);
-
-        }
-
-      };
-
-    document.addEventListener(
-      "mousedown",
-      handleClick
-    );
-
-    return () =>
-      document.removeEventListener(
-        "mousedown",
-        handleClick
-      );
-
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   /* =========================
      LOGOUT
   ========================= */
 
-   const logout = () => {
+  const logout = () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    localStorage.removeItem("email");
+    localStorage.removeItem("avatar");
+    localStorage.removeItem("plan");
 
-  localStorage.removeItem("token");
-  localStorage.removeItem("user");
-  localStorage.removeItem("email");
-  localStorage.removeItem("avatar");   // ✅ FIXED (photo → avatar)
-  localStorage.removeItem("plan");
-
-  navigate("/");
-
-};
+    navigate("/");
+  };
 
   /* =========================
      HELPERS
   ========================= */
 
-  const closeMenu =
-    () =>
-      setMenuOpen(false);
+  const closeMenu = () => {
+    setMenuOpen(false);
+  };
 
-  const isActive =
-    (path) =>
-      location.pathname ===
-      path
-        ? "activeNav"
-        : "";
+  const isActive = (path) => {
+    return location.pathname === path ? "activeNav" : "";
+  };
 
   /* =========================
-     UI START
+     UI
   ========================= */
 
   return (
-
     <div
       className="navbar"
       style={{
-        boxShadow:
-          scrolled
-            ? "0 14px 30px rgba(18,55,30,.08)"
-            : ""
+        boxShadow: scrolled ? "0 14px 30px rgba(18,55,30,.08)" : "none",
       }}
     >
-
       {/* LEFT */}
 
       <div className="navLeft">
-
         <div
           className="logo"
-          onClick={() =>
-            navigate(
-              "/dashboard"
-            )
-          }
+          onClick={() => navigate("/dashboard")}
           style={{
-            cursor:
-              "pointer"
+            cursor: "pointer",
           }}
         >
           🚀 CareerPilot
         </div>
-
       </div>
 
       {/* MOBILE TOGGLE */}
 
-      <div
-        className="menuToggle"
-        onClick={() =>
-          setMenuOpen(
-            !menuOpen
-          )
-        }
-      >
-        {menuOpen
-          ? "✖"
-          : "☰"}
+      <div className="menuToggle" onClick={() => setMenuOpen(!menuOpen)}>
+        {menuOpen ? "✖" : "☰"}
       </div>
 
-      {/* RIGHT */}
+      {/* NAV LINKS */}
 
-      <div
-        className={`navLinks ${
-          menuOpen
-            ? "showMenu"
-            : ""
-        }`}
-      >
-
-        <Link
-          to="/dashboard"
-          className={isActive(
-            "/dashboard"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
+      <div className={`navLinks ${menuOpen ? "showMenu" : ""}`}>
+        <Link to="/dashboard" className={isActive("/dashboard")} onClick={closeMenu}>
           Dashboard
         </Link>
 
-        <Link
-          to="/resume-builder"
-          className={isActive(
-            "/resume-builder"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
+        <Link to="/resume-builder" className={isActive("/resume-builder")} onClick={closeMenu}>
           Resume
         </Link>
 
-        <Link
-          to="/interview-coach"
-          className={isActive(
-            "/interview-coach"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
+        <Link to="/interview-coach" className={isActive("/interview-coach")} onClick={closeMenu}>
           Interview
         </Link>
 
-        <Link
-          to="/analytics"
-          className={isActive(
-            "/analytics"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
-          Analytics
-        </Link>
-
-        <Link
-          to="/notifications"
-          className={isActive(
-            "/notifications"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
-          Alerts
-        </Link>
-
-        <Link
-          to="/profile"
-          className={isActive(
-            "/profile"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
+        <Link to="/profile" className={isActive("/profile")} onClick={closeMenu}>
           Profile
-        </Link>
-
-        <Link
-          to="/settings"
-          className={isActive(
-            "/settings"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
-          Settings
-        </Link>
-
-        <Link
-          to="/support"
-          className={isActive(
-            "/support"
-          )}
-          onClick={
-            closeMenu
-          }
-        >
-          Support
         </Link>
 
         {/* PROFILE */}
@@ -374,210 +216,129 @@ function Navbar() {
         <div
           className="navProfile"
           ref={profileRef}
-           onClick={(e) => {
+          onClick={(e) => {
             e.stopPropagation();
+
             setProfileOpen(!profileOpen);
-          }
-        }
+          }}
           style={{
-            cursor:
-              "pointer",
-            position:
-              "relative"
+            cursor: "pointer",
+            position: "relative",
           }}
         >
-
           {photo ? (
-
             <img
               src={photo}
               alt="profile"
               style={{
                 width: "42px",
                 height: "42px",
-                borderRadius:
-                  "50%",
-                objectFit:
-                  "cover",
-                border:
-                  "2px solid #e7f5ea"
+                borderRadius: "50%",
+                objectFit: "cover",
+                border: "2px solid #e7f5ea",
               }}
             />
-
           ) : (
-
-            <div className="avatarCircle">
-              {firstLetter}
-            </div>
-
+            <div className="avatarCircle">{firstLetter}</div>
           )}
 
           <div className="profileMeta">
+            <span className="profileName">{userName}</span>
 
-            <span className="profileName">
-              {userName}
-            </span>
-
-            <small
-              style={{
-                color:
-                  plan ===
-                  "Premium"
-                    ? "#f59f00"
-                    : "#94a398",
-                fontWeight:
-                  "700"
-              }}
-            >
-              {plan ===
-              "Premium"
-                ? "⭐ Premium"
-                : "Free User"}
-            </small>
-
+            {plan === "Premium" && (
+              <small
+                style={{
+                  color: "#f59f00",
+                  fontWeight: "700",
+                }}
+              >
+                ⭐ Premium
+              </small>
+            )}
           </div>
 
           {/* DROPDOWN */}
 
           {profileOpen && (
-
             <div
               style={{
-                position:
-                  "absolute",
+                position: "absolute",
                 top: "55px",
                 right: "0",
-                minWidth:
-                  "220px",
-                background:
-                  "#ffffff",
-                border:
-                  "1px solid #edf2ee",
-                borderRadius:
-                  "14px",
-                padding:
-                  "10px",
-                boxShadow:
-                  "0 16px 35px rgba(0,0,0,.08)",
-                zIndex: 999
+                minWidth: "220px",
+                background: "#ffffff",
+                border: "1px solid #edf2ee",
+                borderRadius: "14px",
+                padding: "10px",
+                boxShadow: "0 16px 35px rgba(0,0,0,.08)",
+                zIndex: 999,
               }}
             >
-
               <div
                 style={{
-                  padding:
-                    "10px",
-                  borderBottom:
-                    "1px solid #f1f3f2",
-                  marginBottom:
-                    "8px"
+                  padding: "10px",
+                  borderBottom: "1px solid #f1f3f2",
+                  marginBottom: "8px",
                 }}
               >
-
-                <strong>
-                  {userName}
-                </strong>
+                <strong>{userName}</strong>
 
                 <p
                   style={{
                     margin: 0,
-                    fontSize:
-                      "12px",
-                    color:
-                      "#94a398"
+                    fontSize: "12px",
+                    color: "#94a398",
                   }}
                 >
                   {email}
                 </p>
-
               </div>
 
               <Link
                 to="/profile"
-                onClick={
-                  closeMenu
-                }
+                onClick={closeMenu}
                 style={{
-                  display:
-                    "block",
-                  padding:
-                    "10px"
+                  display: "block",
+                  padding: "10px",
                 }}
               >
                 👤 My Profile
               </Link>
 
               <Link
-                to="/settings"
-                onClick={
-                  closeMenu
-                }
-                style={{
-                  display:
-                    "block",
-                  padding:
-                    "10px"
-                }}
-              >
-                ⚙️ Settings
-              </Link>
-
-              <Link
                 to="/dashboard"
-                onClick={
-                  closeMenu
-                }
+                onClick={closeMenu}
                 style={{
-                  display:
-                    "block",
-                  padding:
-                    "10px"
+                  display: "block",
+                  padding: "10px",
                 }}
               >
                 🚀 Dashboard
               </Link>
 
               <div
-                onClick={
-                  logout
-                }
+                onClick={logout}
                 style={{
-                  padding:
-                    "10px",
-                  cursor:
-                    "pointer",
-                  color:
-                    "#e03131",
-                  fontWeight:
-                    "700"
+                  padding: "10px",
+                  cursor: "pointer",
+                  color: "#e03131",
+                  fontWeight: "700",
                 }}
               >
                 Logout
               </div>
-
             </div>
-
           )}
-
         </div>
 
         {/* LOGOUT BUTTON */}
 
-        <button
-          className="navBtn"
-          onClick={
-            logout
-          }
-        >
+        <button className="navBtn" onClick={logout}>
           Logout
         </button>
-
       </div>
-
     </div>
-
   );
-
 }
 
 export default Navbar;

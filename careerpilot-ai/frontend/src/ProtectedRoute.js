@@ -1,20 +1,13 @@
 // src/ProtectedRoute.js
 
-import React, {
-  useEffect,
-  useState
-} from "react";
+import React, { useEffect, useState } from "react";
 
-import {
-  Navigate,
-  useLocation
-} from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 
 import Swal from "sweetalert2";
 import { api } from "./api";
 
 function ProtectedRoute({ children }) {
-
   const [checking, setChecking] = useState(true);
   const [isValid, setIsValid] = useState(false);
 
@@ -24,32 +17,26 @@ function ProtectedRoute({ children }) {
      HELPERS
   ========================= */
 
-  const getToken = () =>
-    localStorage.getItem("token");
+  const getToken = () => localStorage.getItem("token");
 
   const clearSession = () => {
-
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     localStorage.removeItem("email");
     localStorage.removeItem("avatar");
     localStorage.removeItem("plan");
-
   };
 
   const validateToken = (token) => {
-
     if (!token) return false;
 
-    if (
-      token === "null" ||
-      token === "undefined"
-    ) return false;
+    if (token === "null" || token === "undefined") return false;
 
-    if (token.length < 10) return false;
+    if (typeof token !== "string") return false;
+
+    if (token.trim().length < 20) return false;
 
     return true;
-
   };
 
   /* =========================
@@ -57,93 +44,86 @@ function ProtectedRoute({ children }) {
   ========================= */
 
   useEffect(() => {
-
-    let alertShown = false;
+    let mounted = true;
 
     const showAlert = (title, text) => {
+      const alreadyShown = sessionStorage.getItem("auth_alert");
 
-      if (alertShown) return;
+      if (alreadyShown) return;
 
-      alertShown = true;
+      sessionStorage.setItem("auth_alert", "true");
 
       Swal.fire({
         icon: "warning",
         title,
-        text
+        text,
       });
 
+      setTimeout(() => {
+        sessionStorage.removeItem("auth_alert");
+      }, 4000);
     };
 
     const verifyAuth = async () => {
-
       const token = getToken();
 
       /* ❌ NO TOKEN */
 
       if (!token) {
         setIsValid(false);
-        setChecking(false);
+        if (mounted) {
+          if (mounted) {
+            setChecking(false);
+          }
+        }
         return;
       }
 
       /* ❌ INVALID TOKEN */
 
       if (!validateToken(token)) {
-
         clearSession();
 
-        showAlert(
-          "Session Invalid",
-          "Please login again."
-        );
+        showAlert("Session Invalid", "Please login again.");
 
-        setIsValid(false);
-        setChecking(false);
+        if (mounted) {
+          setIsValid(false);
+          setChecking(false);
+        }
         return;
       }
 
       /* ✅ BACKEND VERIFY */
 
       try {
+        const res = await api("/verify-token", "GET", null, token);
 
-        const res = await api(
-          "/verify-token",
-          "GET",
-          null,
-          token
-        );
-
-        if (res?.valid) {
-
-          setIsValid(true);
-
+        if (res && res.valid === true) {
+          if (mounted) {
+            setIsValid(true);
+          }
         } else {
-
           throw new Error();
-
         }
-
       } catch {
-
         clearSession();
 
-        showAlert(
-          "Session Expired",
-          "Please login again."
-        );
+        showAlert("Session Expired", "Please login again.");
 
-        setIsValid(false);
-
+        if (mounted) {
+          setIsValid(false);
+        }
       } finally {
-
-        setChecking(false);
-
+        if (mounted) {
+          setChecking(false);
+        }
       }
-
     };
 
     verifyAuth();
-
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   /* =========================
@@ -151,16 +131,12 @@ function ProtectedRoute({ children }) {
   ========================= */
 
   if (checking) {
-
     return (
       <div className="container">
         <div className="card authCard">
-
           <h1>🔒 Checking Access</h1>
 
-          <p className="subtitle">
-            Verifying your secure session...
-          </p>
+          <p className="subtitle">Verifying your secure session...</p>
 
           <div
             className="pulse"
@@ -173,12 +149,11 @@ function ProtectedRoute({ children }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "32px"
+              fontSize: "32px",
             }}
           >
             🚀
           </div>
-
         </div>
       </div>
     );
@@ -189,14 +164,7 @@ function ProtectedRoute({ children }) {
   ========================= */
 
   if (!isValid) {
-
-    return (
-      <Navigate
-        to="/"
-        replace
-        state={{ from: location.pathname }}
-      />
-    );
+    return <Navigate to="/" replace state={{ from: location.pathname }} />;
   }
 
   /* =========================

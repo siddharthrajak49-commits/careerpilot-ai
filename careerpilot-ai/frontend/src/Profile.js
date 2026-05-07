@@ -5,11 +5,16 @@ import React, {
   useEffect
 } from "react";
 
-import { api } from "./api";   // ✅ axios हटाकर api use किया
+import { api } from "./api";
+
 import Swal from "sweetalert2";
-import { useNavigate } from "react-router-dom";
+
+import {
+  useNavigate
+} from "react-router-dom";
 
 import Navbar from "./Navbar";
+
 import "./App.css";
 
 function Profile() {
@@ -21,41 +26,69 @@ function Profile() {
      STATE
   ========================= */
 
-  const [name, setName] =
-    useState("");
+  const [
+    name,
+    setName
+  ] = useState("");
 
-  const [email, setEmail] =
-    useState("");
+  const [
+    email,
+    setEmail
+  ] = useState("");
 
-  const [phone, setPhone] =
-    useState("");
+  const [
+    phone,
+    setPhone
+  ] = useState("");
 
-  const [city, setCity] =
-    useState("");
+  const [
+    city,
+    setCity
+  ] = useState("");
 
-  const [bio, setBio] =
-    useState("");
+  const [
+    bio,
+    setBio
+  ] = useState("");
 
-  const [editing, setEditing] =
-    useState(false);
+  const [
+    editing,
+    setEditing
+  ] = useState(false);
 
-  const [joinedDate, setJoinedDate] =
-    useState("");
+  const [
+    joinedDate,
+    setJoinedDate
+  ] = useState("");
 
-  const [resumeCount, setResumeCount] =
-    useState(0);
+  const [
+    resumeCount,
+    setResumeCount
+  ] = useState(0);
 
-  const [profileViews] =
-    useState(128);
+  const [
+    profileViews
+  ] = useState(128);
 
-  const [plan, setPlan] =
-    useState("Free");
+  const [
+    plan,
+    setPlan
+  ] = useState("Premium");
 
-  const [avatar, setAvatar] =
-    useState("");
+  const [
+    avatar,
+    setAvatar
+  ] = useState("");
 
-  const [loading, setLoading] =
-    useState(false);
+  const [
+    loading,
+    setLoading
+  ] = useState(false);
+
+  const [
+    uploadLoading,
+    setUploadLoading
+  ] = useState(false);
 
   /* =========================
      LOAD DATA
@@ -83,10 +116,10 @@ function Profile() {
 
     setAvatar(
       localStorage.getItem(
-        "photo"
+        "avatar"
       ) ||
       localStorage.getItem(
-        "avatar"
+        "photo"
       ) ||
       ""
     );
@@ -96,7 +129,7 @@ function Profile() {
   }, []);
 
   /* =========================
-     BACKEND PROFILE LOAD
+     LOAD PROFILE
   ========================= */
 
   const loadProfile =
@@ -117,10 +150,15 @@ function Profile() {
         }
 
         const res =
-          await api("/me", "GET", null, token);
+          await api(
+            "/me",
+            "GET",
+            null,
+            token
+          );
 
         const data =
-          res;
+          res || {};
 
         setName(
           data.name || "User"
@@ -140,11 +178,11 @@ function Profile() {
 
         setBio(
           data.bio ||
-          "Building my dream career with CareerPilot."
+          "Building my dream career with CareerPilot AI."
         );
 
         setPlan(
-          data.plan || "Free"
+          data.plan || "Premium"
         );
 
         setAvatar(
@@ -162,11 +200,36 @@ function Profile() {
         );
 
         localStorage.setItem(
+          "phone",
+          data.phone || ""
+        );
+
+        localStorage.setItem(
+          "city",
+          data.city || ""
+        );
+
+        localStorage.setItem(
+          "bio",
+          data.bio || ""
+        );
+
+        localStorage.setItem(
           "avatar",
           data.photo || ""
         );
 
-      } catch {
+        localStorage.setItem(
+          "plan",
+          data.plan || "Premium"
+        );
+
+      } catch (err) {
+
+        console.log(
+          "Profile load failed",
+          err
+        );
 
         fallbackLocal();
 
@@ -175,7 +238,7 @@ function Profile() {
     };
 
   /* =========================
-     FALLBACK LOCAL
+     LOCAL FALLBACK
   ========================= */
 
   const fallbackLocal =
@@ -209,13 +272,19 @@ function Profile() {
         localStorage.getItem(
           "bio"
         ) ||
-        "Building my dream career with CareerPilot."
+        "Building my dream career with CareerPilot AI."
       );
 
       setPlan(
         localStorage.getItem(
           "plan"
-        ) || "Free"
+        ) || "Premium"
+      );
+
+      setAvatar(
+        localStorage.getItem(
+          "avatar"
+        ) || ""
       );
 
     };
@@ -231,14 +300,11 @@ function Profile() {
 
         Swal.fire({
           icon: "warning",
-          title:
-            "Missing Fields",
-          text:
-            "Name and Email required."
+          title: "Missing Fields",
+          text: "Name and Email required."
         });
 
         return;
-
       }
 
       try {
@@ -250,62 +316,77 @@ function Profile() {
             "token"
           );
 
-        await api(
-          "/profile/update",
-          "POST",
-          {
-            name,
-            phone,
-            city,
-            bio
-          },
-          token
+        const response =
+          await api(
+            "/profile/update",
+            "POST",
+            {
+              name,
+              phone,
+              city,
+              bio
+            },
+            token
+          );
+
+        localStorage.setItem(
+          "user",
+          name
         );
 
-      } catch {}
+        localStorage.setItem(
+          "email",
+          email
+        );
 
-      localStorage.setItem(
-        "user",
-        name
-      );
+        localStorage.setItem(
+          "phone",
+          phone
+        );
 
-      localStorage.setItem(
-        "email",
-        email
-      );
+        localStorage.setItem(
+          "city",
+          city
+        );
 
-      localStorage.setItem(
-        "phone",
-        phone
-      );
+        localStorage.setItem(
+          "bio",
+          bio
+        );
+        window.dispatchEvent(new Event("storage"));
 
-      localStorage.setItem(
-        "city",
-        city
-      );
+        Swal.fire({
+          icon: "success",
+          title: "Profile Updated",
+          text:
+            response?.message ||
+            "Saved successfully.",
+          timer: 1600,
+          showConfirmButton: false
+        });
 
-      localStorage.setItem(
-        "bio",
-        bio
-      );
+        setEditing(false);
 
-      Swal.fire({
-        icon: "success",
-        title:
-          "Profile Updated",
-        text:
-          "Saved successfully.",
-        timer: 1400,
-        showConfirmButton: false
-      });
+      } catch (err) {
 
-      setEditing(false);
-      setLoading(false);
+        Swal.fire({
+          icon: "error",
+          title: "Update Failed",
+          text:
+            err?.message ||
+            "Backend profile update failed"
+        });
+
+      } finally {
+
+        setLoading(false);
+
+      }
 
     };
 
   /* =========================
-     AVATAR
+     AVATAR UPLOAD
   ========================= */
 
   const handleAvatar =
@@ -316,15 +397,44 @@ function Profile() {
 
       if (!file) return;
 
+      const allowed =
+        [
+          "image/png",
+          "image/jpeg",
+          "image/jpg"
+        ];
+
+      if (
+        !allowed.includes(
+          file.type
+        )
+      ) {
+
+        Swal.fire({
+          icon: "error",
+          title: "Invalid Image",
+          text: "Only PNG/JPG allowed"
+        });
+
+        return;
+      }
+
       try {
 
+        setUploadLoading(true);
+
         const token =
-          localStorage.getItem("token");
+          localStorage.getItem(
+            "token"
+          );
 
         const formData =
           new FormData();
 
-        formData.append("file", file);
+        formData.append(
+          "file",
+          file
+        );
 
         const res =
           await api(
@@ -334,28 +444,43 @@ function Profile() {
             token
           );
 
+        const imageUrl =
+          res.url ||
+          res.photo ||
+          "";
+
         setAvatar(
-          res.url
+          imageUrl
         );
 
         localStorage.setItem(
           "avatar",
-          res.url
+          imageUrl
+        );
+        window.dispatchEvent(
+          new Event("storage")
         );
 
         Swal.fire({
           icon: "success",
-          title:
-            "Avatar Updated"
+          title: "Avatar Updated",
+          timer: 1400,
+          showConfirmButton: false
         });
 
-      } catch {
+      } catch (err) {
 
         Swal.fire({
           icon: "error",
-          title:
-            "Upload Failed"
+          title: "Upload Failed",
+          text:
+            err?.message ||
+            "Avatar upload failed"
         });
+
+      } finally {
+
+        setUploadLoading(false);
 
       }
 
@@ -368,13 +493,9 @@ function Profile() {
   const changePassword =
     () => {
 
-      Swal.fire({
-        icon: "info",
-        title:
-          "Use Forgot Password",
-        text:
-          "Password reset available on login page."
-      });
+      navigate(
+        "/forgot-password"
+      );
 
     };
 
@@ -385,10 +506,33 @@ function Profile() {
   const logout =
     () => {
 
-      localStorage.clear();
+      localStorage.removeItem(
+        "token"
+      );
+
+      localStorage.removeItem(
+        "user"
+      );
+
+      localStorage.removeItem(
+        "email"
+      );
+
+      localStorage.removeItem(
+        "avatar"
+      );
+
+      localStorage.removeItem(
+        "plan"
+      );
+
       navigate("/");
 
     };
+
+  /* =========================
+     USER LETTER
+  ========================= */
 
   const firstLetter =
     name
@@ -430,8 +574,9 @@ function Profile() {
 
               <p className="heroText">
                 Manage your account,
-                membership and
-                career growth.
+                career profile,
+                AI personalization
+                and growth journey.
               </p>
 
             </div>
@@ -441,8 +586,14 @@ function Profile() {
               <div className="statCard">
 
                 <span>⭐</span>
-                <h3>{plan}</h3>
-                <p>Membership</p>
+
+                <h3>
+                  {plan}
+                </h3>
+
+                <p>
+                  AI Career System
+                </p>
 
               </div>
 
@@ -450,7 +601,7 @@ function Profile() {
 
           </div>
 
-          {/* MAIN */}
+          {/* MAIN CARD */}
 
           <div className="card">
 
@@ -459,15 +610,15 @@ function Profile() {
             </h1>
 
             <p className="subtitle">
-              Premium Profile Dashboard
+              Smart AI Career Profile Dashboard
             </p>
 
             {/* AVATAR */}
 
             <div
               style={{
-                textAlign:
-                  "center"
+                textAlign: "center",
+                marginBottom: "25px"
               }}
             >
 
@@ -477,12 +628,12 @@ function Profile() {
                   src={avatar}
                   alt="avatar"
                   style={{
-                    width: "95px",
-                    height: "95px",
-                    borderRadius:
-                      "50%",
-                    objectFit:
-                      "cover"
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "50%",
+                    objectFit: "cover",
+                    border:
+                      "4px solid #e9f7ec"
                   }}
                 />
 
@@ -491,26 +642,17 @@ function Profile() {
                 <div
                   className="pulse"
                   style={{
-                    width: "95px",
-                    height: "95px",
-                    borderRadius:
-                      "50%",
-                    background:
-                      "#eef9ef",
-                    color:
-                      "#2f9e44",
-                    fontSize:
-                      "38px",
-                    fontWeight:
-                      "900",
-                    display:
-                      "flex",
-                    justifyContent:
-                      "center",
-                    alignItems:
-                      "center",
-                    margin:
-                      "0 auto"
+                    width: "100px",
+                    height: "100px",
+                    borderRadius: "50%",
+                    background: "#eef9ef",
+                    color: "#2f9e44",
+                    fontSize: "40px",
+                    fontWeight: "900",
+                    display: "flex",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    margin: "0 auto"
                   }}
                 >
                   {firstLetter}
@@ -518,12 +660,35 @@ function Profile() {
 
               )}
 
-              <input
-                type="file"
-                onChange={
-                  handleAvatar
-                }
-              />
+              <div
+                style={{
+                  marginTop: "15px"
+                }}
+              >
+
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={
+                    handleAvatar
+                  }
+                />
+
+                {uploadLoading && (
+
+                  <p
+                    style={{
+                      marginTop: "10px",
+                      color: "#2f9e44",
+                      fontWeight: "600"
+                    }}
+                  >
+                    Uploading avatar...
+                  </p>
+
+                )}
+
+              </div>
 
             </div>
 
@@ -535,7 +700,7 @@ function Profile() {
 
                 <input
                   value={name}
-                  onChange={(e)=>
+                  onChange={(e) =>
                     setName(
                       e.target.value
                     )
@@ -551,17 +716,17 @@ function Profile() {
 
                 <input
                   value={phone}
-                  onChange={(e)=>
+                  onChange={(e) =>
                     setPhone(
                       e.target.value
                     )
                   }
-                  placeholder="Phone"
+                  placeholder="Phone Number"
                 />
 
                 <input
                   value={city}
-                  onChange={(e)=>
+                  onChange={(e) =>
                     setCity(
                       e.target.value
                     )
@@ -571,26 +736,49 @@ function Profile() {
 
                 <textarea
                   value={bio}
-                  onChange={(e)=>
+                  onChange={(e) =>
                     setBio(
                       e.target.value
                     )
                   }
-                  placeholder="Bio"
+                  placeholder="Write your career bio..."
+                  rows={5}
                 />
 
-                <button
-                  onClick={
-                    saveProfile
-                  }
-                  disabled={
-                    loading
-                  }
-                >
-                  {loading
-                    ? "Saving..."
-                    : "Save Profile"}
-                </button>
+                <div className="btnRow">
+
+                  <button
+                    onClick={
+                      saveProfile
+                    }
+                    disabled={
+                      loading
+                    }
+                  >
+                    {
+                      loading
+                        ? "Saving..."
+                        : "Save Profile"
+                    }
+                  </button>
+
+                  <button
+                    onClick={() =>
+                      setEditing(false)
+                    }
+                    style={{
+                      background:
+                        "#fff",
+                      color:
+                        "#173221",
+                      border:
+                        "1px solid #dfe9df"
+                    }}
+                  >
+                    Cancel
+                  </button>
+
+                </div>
 
               </>
 
@@ -602,20 +790,61 @@ function Profile() {
                   Account Details
                 </h2>
 
-                <p><strong>Name:</strong> {name}</p>
-                <p><strong>Email:</strong> {email}</p>
-                <p><strong>Phone:</strong> {phone || "N/A"}</p>
-                <p><strong>City:</strong> {city || "N/A"}</p>
-                <p><strong>Joined:</strong> {joinedDate}</p>
-                <p><strong>Plan:</strong> {plan}</p>
-                <p><strong>Bio:</strong> {bio}</p>
+                <p>
+                  <strong>
+                    Name:
+                  </strong>{" "}
+                  {name}
+                </p>
+
+                <p>
+                  <strong>
+                    Email:
+                  </strong>{" "}
+                  {email}
+                </p>
+
+                <p>
+                  <strong>
+                    Phone:
+                  </strong>{" "}
+                  {phone || "N/A"}
+                </p>
+
+                <p>
+                  <strong>
+                    City:
+                  </strong>{" "}
+                  {city || "N/A"}
+                </p>
+
+                <p>
+                  <strong>
+                    Joined:
+                  </strong>{" "}
+                  {joinedDate}
+                </p>
+
+                <p>
+                  <strong>
+                    Membership:
+                  </strong>{" "}
+                  {plan}
+                </p>
+
+                <p>
+                  <strong>
+                    Bio:
+                  </strong>{" "}
+                  {bio}
+                </p>
 
                 <button
                   onClick={() =>
                     setEditing(true)
                   }
                 >
-                  Edit Profile
+                  Edit Profile ✏️
                 </button>
 
               </div>
@@ -627,27 +856,59 @@ function Profile() {
             <div className="statsGrid">
 
               <div className="statCard">
+
                 <span>📄</span>
-                <h3>{resumeCount}</h3>
-                <p>Reports</p>
+
+                <h3>
+                  {resumeCount}
+                </h3>
+
+                <p>
+                  Reports
+                </p>
+
               </div>
 
               <div className="statCard">
+
                 <span>👀</span>
-                <h3>{profileViews}</h3>
-                <p>Views</p>
+
+                <h3>
+                  {profileViews}
+                </h3>
+
+                <p>
+                  Profile Views
+                </p>
+
               </div>
 
               <div className="statCard">
+
                 <span>⭐</span>
-                <h3>{plan}</h3>
-                <p>Plan</p>
+
+                <h3>
+                  {plan}
+                </h3>
+
+                <p>
+                  Membership
+                </p>
+
               </div>
 
               <div className="statCard">
+
                 <span>🚀</span>
-                <h3>Active</h3>
-                <p>Status</p>
+
+                <h3>
+                  Active
+                </h3>
+
+                <p>
+                  Status
+                </p>
+
               </div>
 
             </div>
@@ -692,20 +953,18 @@ function Profile() {
 
             </div>
 
+            {/* FOOTER */}
+
             <p
               style={{
-                textAlign:
-                  "center",
-                marginTop:
-                  "18px",
-                color:
-                  "#94a398",
-                fontSize:
-                  "13px"
+                textAlign: "center",
+                marginTop: "18px",
+                color: "#94a398",
+                fontSize: "13px"
               }}
             >
               CareerPilot AI •
-              Smart Career Growth
+              Smart Career Growth Platform
             </p>
 
           </div>
@@ -717,6 +976,7 @@ function Profile() {
     </div>
 
   );
+
 }
 
 export default Profile;

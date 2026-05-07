@@ -1,13 +1,9 @@
 // src/App.js
 
 import React from "react";
+import AdminRoute from "./AdminRoute";
 
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate
-} from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 
 /* =========================
    PUBLIC PAGES
@@ -25,11 +21,9 @@ import ResetPassword from "./ResetPassword";
 import Dashboard from "./Dashboard";
 import ResumeBuilder from "./ResumeBuilder";
 import InterviewCoach from "./InterviewCoach";
-import ContactSupport from "./ContactSupport";
-import NotificationsCenter from "./NotificationsCenter";
+
 import Profile from "./Profile";
-import Settings from "./Settings";
-import Analytics from "./Analytics";
+
 import AdminDashboard from "./AdminDashboard";
 
 /* =========================
@@ -49,94 +43,45 @@ import NotFound from "./NotFound";
 ========================= */
 
 function App() {
-
   /* =========================
      AUTH STATE (FIXED)
   ========================= */
 
-  const isLoggedIn =
-    !!localStorage.getItem("token");
+  const isLoggedIn = !!localStorage.getItem("token");
 
-  const userEmail =
-    localStorage.getItem("email");
+  const userEmail = localStorage.getItem("email");
 
-  const isAdmin =
-    userEmail === "admin@careerpilot.com"; // 👉 change this email
+  const isAdmin = userEmail === "admin@careerpilot.ai";
 
   return (
-
     <Router>
-
       <div className="mainAppTheme">
-
         <Routes>
-
           {/* =====================
              PUBLIC ROUTES
           ===================== */}
 
           {/* LOGIN */}
 
-          <Route
-            path="/"
-            element={
-              isLoggedIn
-                ? (
-                  <Navigate
-                    to="/dashboard"
-                    replace
-                  />
-                )
-                : (
-                  <Login />
-                )
-            }
-          />
+          <Route path="/" element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Login />} />
 
           {/* SIGNUP */}
 
           <Route
             path="/signup"
-            element={
-              isLoggedIn
-                ? (
-                  <Navigate
-                    to="/dashboard"
-                    replace
-                  />
-                )
-                : (
-                  <Signup />
-                )
-            }
+            element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <Signup />}
           />
 
           {/* FORGOT PASSWORD */}
 
           <Route
             path="/forgot-password"
-            element={
-              isLoggedIn
-                ? (
-                  <Navigate
-                    to="/dashboard"
-                    replace
-                  />
-                )
-                : (
-                  <ForgotPassword />
-                )
-            }
+            element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <ForgotPassword />}
           />
 
           {/* RESET PASSWORD (FIXED) */}
 
-          <Route
-            path="/reset-password"
-            element={
-              <ResetPassword />
-            }
-          />
+          <Route path="/reset-password" element={<ResetPassword />} />
 
           {/* =====================
              PRIVATE ROUTES
@@ -175,28 +120,6 @@ function App() {
             }
           />
 
-          {/* SUPPORT */}
-
-          <Route
-            path="/support"
-            element={
-              <ProtectedRoute>
-                <ContactSupport />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* NOTIFICATIONS */}
-
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute>
-                <NotificationsCenter />
-              </ProtectedRoute>
-            }
-          />
-
           {/* PROFILE */}
 
           <Route
@@ -208,45 +131,16 @@ function App() {
             }
           />
 
-          {/* SETTINGS */}
-
-          <Route
-            path="/settings"
-            element={
-              <ProtectedRoute>
-                <Settings />
-              </ProtectedRoute>
-            }
-          />
-
-          {/* ANALYTICS */}
-
-          <Route
-            path="/analytics"
-            element={
-              <ProtectedRoute>
-                <Analytics />
-              </ProtectedRoute>
-            }
-          />
-
           {/* ADMIN (SECURED) */}
 
           <Route
             path="/admin"
             element={
-              isAdmin
-                ? (
-                  <ProtectedRoute>
-                    <AdminDashboard />
-                  </ProtectedRoute>
-                )
-                : (
-                  <Navigate
-                    to="/dashboard"
-                    replace
-                  />
-                )
+              <AdminRoute>
+                <ProtectedRoute>
+                  <AdminDashboard />
+                </ProtectedRoute>
+              </AdminRoute>
             }
           />
 
@@ -254,28 +148,10 @@ function App() {
              FALLBACK
           ===================== */}
 
-          <Route
-            path="*"
-            element={
-              isLoggedIn
-                ? (
-                  <NotFound />
-                )
-                : (
-                  <Navigate
-                    to="/"
-                    replace
-                  />
-                )
-            }
-          />
-
+          <Route path="*" element={isLoggedIn ? <NotFound /> : <Navigate to="/" replace />} />
         </Routes>
-
       </div>
-
     </Router>
-
   );
 }
 
