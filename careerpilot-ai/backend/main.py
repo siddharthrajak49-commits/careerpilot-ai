@@ -143,12 +143,15 @@ class VerifyOTPData(BaseModel):
 
 class ForgotPasswordData(BaseModel):
     email: str
-
-
 class ResetPasswordData(BaseModel):
     email: str
     otp: str
     password: str
+
+
+class ChangePasswordData(BaseModel):
+    old_password: str
+    new_password: str
 
 
 class ProfileData(BaseModel):
@@ -352,16 +355,44 @@ def track_public(page_name: str):
 # ==========================================================
 # CLOUDINARY UPLOAD
 # ==========================================================
-
 @app.post("/upload/avatar")
 async def upload_avatar(
     file: UploadFile = File(...),
     authorization: str = Header(None)
 ):
 
-    email = auth_email(authorization)
+    email = auth_email(
+        authorization
+    )
+
+    # FILE TYPE VALIDATION
+
+    allowed = [
+        "image/png",
+        "image/jpeg",
+        "image/jpg",
+        "image/webp"
+    ]
+
+    if file.content_type not in allowed:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid image type"
+        )
 
     content = await file.read()
+
+    # SIZE LIMIT
+
+    if len(content) > 5 * 1024 * 1024:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Image too large"
+        )
+
+    # CLOUDINARY
 
     result = cloudinary.uploader.upload(
         content,
@@ -376,18 +407,28 @@ async def upload_avatar(
         User.email == email
     ).first()
 
-    if user:
-        user.avatar = image_url
-        db.commit()
+    if not user:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    user.avatar = image_url
+
+    db.commit()
 
     db.close()
 
     return {
-        "message": "Avatar uploaded",
-        "url": image_url
+        "message":
+        "Avatar uploaded successfully",
+
+        "url":
+        image_url
     }
-
-
 @app.post("/upload/resume")
 async def upload_resume(
     file: UploadFile = File(...)
@@ -536,7 +577,7 @@ def verify_signup_otp(
         password=hash_password(
             data.password
         ),
-        plan="Free",
+        plan="CareerPilot AI",
         is_verified=True
     )
 
@@ -632,7 +673,7 @@ def google_login(
             ),
             avatar=data.photo,
             is_verified=True,
-            plan="Free"
+            plan="CareerPilot AI"
         )
 
         db.add(user)
@@ -726,7 +767,6 @@ def my_profile(
 
     return result
 
-
 @app.post("/profile/update")
 def update_profile(
     data: ProfileData,
@@ -744,6 +784,7 @@ def update_profile(
     ).first()
 
     if not user:
+
         db.close()
 
         raise HTTPException(
@@ -751,18 +792,52 @@ def update_profile(
             detail="User not found"
         )
 
-    user.name = data.name
-    user.phone = data.phone
-    user.city = data.city
-    user.bio = data.bio
+    # SAFE CLEANUP
+
+    user.name = (
+        data.name.strip()
+        if data.name
+        else user.name
+    )
+
+    user.phone = (
+        data.phone.strip()
+        if data.phone
+        else ""
+    )
+
+    user.city = (
+        data.city.strip()
+        if data.city
+        else ""
+    )
+
+    user.bio = (
+        data.bio.strip()
+        if data.bio
+        else ""
+    )
 
     db.commit()
+
+    updated = {
+        "name": user.name,
+        "phone": user.phone,
+        "city": user.city,
+        "bio": user.bio,
+        "photo": user.avatar,
+        "plan": user.plan
+    }
+
     db.close()
 
     return {
-        "message": "Profile Updated"
-    }
+        "message":
+        "Profile Updated Successfully",
 
+        "user":
+        updated
+    }
 
 # ==========================================================
 # PASSWORD RESET
@@ -863,14 +938,13 @@ def reset_password(
         "message": "Password Updated"
     }
 
-
+    # ==========================================================
+# CHANGE PASSWORD
 # ==========================================================
-# SUPPORT TICKETS
-# ==========================================================
 
-@app.post("/support/create")
-def create_ticket(
-    data: TicketData,
+@app.post("/change-password")
+def change_password(
+    data: ChangePasswordData,
     authorization: str = Header(None)
 ):
 
@@ -880,58 +954,56 @@ def create_ticket(
 
     db = SessionLocal()
 
-    row = SupportTicket(
-        email=email,
-        subject=data.subject,
-        message=data.message,
-        status="Open"
+    user = db.query(User).filter(
+        User.email == email
+    ).first()
+
+    if not user:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    # CHECK OLD PASSWORD
+
+    if not verify_password(
+        data.old_password,
+        user.password
+    ):
+
+        db.close()
+
+        raise HTTPException(
+            status_code=400,
+            detail="Old password incorrect"
+        )
+
+    # SAME PASSWORD BLOCK
+
+    if data.old_password == data.new_password:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different"
+        )
+
+    # UPDATE PASSWORD
+
+    user.password = hash_password(
+        data.new_password
     )
 
-    db.add(row)
     db.commit()
     db.close()
 
     return {
-        "message": "Ticket created"
+        "message": "Password changed successfully"
     }
-
-
-@app.get("/support/my-tickets")
-def my_tickets(
-    authorization: str = Header(None)
-):
-
-    email = auth_email(
-        authorization
-    )
-
-    db = SessionLocal()
-
-    rows = db.query(
-        SupportTicket
-    ).filter(
-        SupportTicket.email == email
-    ).order_by(
-        SupportTicket.id.desc()
-    ).all()
-
-    data = []
-
-    for row in rows:
-        data.append({
-            "id": row.id,
-            "subject": row.subject,
-            "message": row.message,
-            "status": row.status,
-            "created_at": str(row.created_at)
-        })
-
-    db.close()
-
-    return {
-        "tickets": data
-    }
-
 
 # ==========================================================
 # SUBSCRIPTION
@@ -995,6 +1067,8 @@ async def analyze_resume(
     # ===============================
     try:
         data = full_resume_analysis(text)
+        print("RAW AI RESPONSE:")
+        print(data)
 
         if not isinstance(data, dict):
             raise Exception("Invalid AI response")
@@ -1026,39 +1100,183 @@ async def analyze_resume(
             }
         }
 
-    # ===============================
-    # ✅ DATA CLEANING (IMPORTANT)
+        # ===============================
+    # CLEAN AI RESPONSE
     # ===============================
 
-    # ATS int fix
-    try:
-        data["ats_score"] = int(data["ats_score"])
-    except:
-        data["ats_score"] = 50
+    if not isinstance(data, dict):
+        data = {}
 
+    # ATS SCORE
     # skills list fix
+
     if isinstance(data.get("skills_found"), str):
         data["skills_found"] = [
-            s.strip() for s in data["skills_found"].split(",")
+            s.strip()
+            for s in data["skills_found"].split(",")
         ]
 
-    # salary fix
     try:
-        data["predicted_salary_lpa"] = float(
-            data.get("predicted_salary_lpa", 3)
+
+        data["ats_score"] = int(
+            data.get("ats_score", 50)
         )
+
     except:
-        data["predicted_salary_lpa"] = 3
 
-    # defaults
-    data.setdefault("skills_found", [])
-    data.setdefault("missing_skills", [])
-    data.setdefault("tips", [])
-    data.setdefault("interview_questions", [])
-    data.setdefault("ats_score", 50)
-    data.setdefault("recommended_role", "Unknown")
-    data.setdefault("predicted_salary_lpa", 3)
+        data["ats_score"] = 50
 
+    # SALARY
+
+    try:
+
+        data["predicted_salary_lpa"] = float(
+            data.get(
+                "predicted_salary_lpa",
+                4
+            )
+        )
+
+    except:
+
+        data["predicted_salary_lpa"] = 4
+
+    # SAFE ARRAYS
+
+    for key in [
+
+        "skills_found",
+        "missing_skills",
+        "strengths",
+        "weaknesses",
+        "recommended_skills",
+        "tips",
+        "interview_questions"
+
+    ]:
+
+        if not isinstance(
+            data.get(key),
+            list
+        ):
+
+            # STRING TO ARRAY
+
+            if isinstance(
+                data.get(key),
+                str
+            ):
+
+                data[key] = [
+                    x.strip()
+                    for x in data[key].split(",")
+                    if x.strip()
+                ]
+
+            else:
+
+                data[key] = []
+
+    # SAFE SUMMARY
+
+    if not isinstance(
+        data.get("summary"),
+        str
+    ):
+
+        data["summary"] = ""
+
+    # SAFE ROLE
+
+    if not isinstance(
+        data.get("recommended_role"),
+        str
+    ):
+
+        data["recommended_role"] = "Software Developer"
+
+    # SAFE ATS BREAKDOWN
+
+    if not isinstance(
+        data.get("ats_breakdown"),
+        dict
+    ):
+
+        score = data["ats_score"]
+
+        data["ats_breakdown"] = {
+
+            "content":
+                int(score * 0.25),
+
+            "skills":
+                int(score * 0.25),
+
+            "formatting":
+                int(score * 0.25),
+
+            "keywords":
+                int(score * 0.25)
+
+        }
+
+    # DEFAULTS
+    
+
+    data.setdefault(
+        "skills_found",
+        []
+    )
+
+    data.setdefault(
+        "missing_skills",
+        []
+    )
+
+    data.setdefault(
+        "strengths",
+        []
+    )
+
+    data.setdefault(
+        "weaknesses",
+        []
+    )
+
+    data.setdefault(
+        "recommended_skills",
+        []
+    )
+
+    data.setdefault(
+        "tips",
+        []
+    )
+
+    data.setdefault(
+        "interview_questions",
+        []
+    )
+
+    data.setdefault(
+        "summary",
+        ""
+    )
+
+    data.setdefault(
+        "recommended_role",
+        "Software Developer"
+    )
+
+    data.setdefault(
+        "predicted_salary_lpa",
+        4
+    )
+
+    data.setdefault(
+        "ats_score",
+        50
+    )
     # ===============================
     # ✅ SAVE TO DB (OUTSIDE TRY)
     # ===============================
@@ -1084,26 +1302,49 @@ async def analyze_resume(
         db_add_notification(email, "Strong ATS score generated", "success")
 
     db.close()
+    print("FINAL ANALYZE RESPONSE:")
+    print(data)
 
     return data
+
 # ==========================================================
 # AI RESUME IMPROVEMENT
 # ==========================================================
-
 @app.post("/ai/resume-improve")
 async def ai_resume_improve(
     file: UploadFile = File(...)
 ):
 
-    text = await extract_resume_text(
-        file
-    )
+    try:
 
-    result = improve_resume_ai(text)
+        text = await extract_resume_text(
+            file
+        )
 
-    return {
-        "result": result
-    }
+        if not text or len(text.strip()) < 30:
+
+            raise HTTPException(
+                status_code=400,
+                detail="Resume text extraction failed"
+            )
+
+        result = improve_resume_ai(text)
+
+        if not isinstance(result, dict):
+            result = {}
+
+        return {
+            "result": result
+        }
+
+    except Exception as e:
+
+        print(str(e))
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
 
 
 # ==========================================================
@@ -1122,44 +1363,6 @@ def ai_interview(role: str):
 # ==========================================================
 # PUBLIC ANALYTICS
 # ==========================================================
-
-@app.get("/analytics")
-def analytics():
-
-    db = SessionLocal()
-
-    total_users = db.query(
-        User
-    ).count()
-
-    reports_generated = db.query(
-        Report
-    ).count()
-
-    premium_users = db.query(
-        User
-    ).filter(
-        User.plan == "Premium"
-    ).count()
-
-    avg_ats = db.query(
-        func.avg(
-            Report.ats.cast(Float)
-        )
-    ).scalar()
-
-    db.close()
-
-    return {
-        "total_users": total_users,
-        "reports_generated": reports_generated,
-        "premium_users": premium_users,
-        "avg_ats_score": round(
-            avg_ats or 0,
-            2
-        )
-    }
-
 
 # ==========================================================
 # USER DASHBOARD STATS
@@ -1387,9 +1590,7 @@ def admin_stats(
         ) == func.current_date()
     ).count()
 
-    tickets = db.query(
-        SupportTicket
-    ).count()
+   
 
     db.close()
 
@@ -1398,7 +1599,7 @@ def admin_stats(
         "premium_users": premium_users,
         "reports": reports,
         "today_signups": today_signups,
-        "tickets": tickets
+        
     }
 
 
@@ -1644,7 +1845,6 @@ def admin_broadcast(
 # ==========================================================
 # TOGGLE PLAN
 # ==========================================================
-
 @app.put("/admin/toggle-plan/{user_id}")
 def toggle_plan(
     user_id: int,
@@ -1664,17 +1864,31 @@ def toggle_plan(
     ).first()
 
     if not user:
+
         db.close()
+
         raise HTTPException(
             status_code=404,
             detail="User not found"
         )
 
-    user.plan = (
-        "Premium"
-        if user.plan == "Free"
-        else "Free"
-    )
+    # ONLY PREMIUM LABELS
+
+    plans = [
+        "CareerPilot AI",
+        "CareerPilot AI Pro",
+        "CareerPilot AI Ultra"
+    ]
+
+    current = user.plan or plans[0]
+
+    try:
+        index = plans.index(current)
+        next_index = (index + 1) % len(plans)
+    except ValueError:
+        next_index = 0
+
+    user.plan = plans[next_index]
 
     db.commit()
 
@@ -1683,10 +1897,11 @@ def toggle_plan(
     db.close()
 
     return {
-        "message": "Plan updated",
-        "plan": new_plan
+        "message":
+        "Plan updated",
+        "plan":
+        new_plan
     }
-
 
 # ==========================================================
 # DELETE USER
@@ -1797,7 +2012,7 @@ def chat_ai(
     except:
         pass
 
-    reply = career_chat_ai(f"""
+    reply = career_chat_ai(f""" 
     You are CareerPilot AI assistant.
     User: {data.message}
     Give clear, helpful answer.""")
@@ -1827,3 +2042,71 @@ def version():
         "version": "7.0.0"
     }
 
+# ==========================================================
+# CHANGE PASSWORD
+# ==========================================================
+
+@app.post("/change-password")
+def change_password(
+    data: ChangePasswordData,
+    authorization: str = Header(None)
+):
+
+    email = auth_email(
+        authorization
+    )
+
+    db = SessionLocal()
+
+    user = db.query(User).filter(
+        User.email == email
+    ).first()
+
+    if not user:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=404,
+            detail="User not found"
+        )
+
+    # OLD PASSWORD CHECK
+
+    if not verify_password(
+        data.old_password,
+        user.password
+    ):
+
+        db.close()
+
+        raise HTTPException(
+            status_code=400,
+            detail="Old password incorrect"
+        )
+
+    # SAME PASSWORD BLOCK
+
+    if data.old_password == data.new_password:
+
+        db.close()
+
+        raise HTTPException(
+            status_code=400,
+            detail="New password must be different"
+        )
+
+    # UPDATE PASSWORD
+
+    user.password = hash_password(
+        data.new_password
+    )
+
+    db.commit()
+
+    db.close()
+
+    return {
+        "message":
+        "Password changed successfully"
+    }
