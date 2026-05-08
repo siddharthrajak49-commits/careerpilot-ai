@@ -7,7 +7,7 @@ import ReactMarkdown from "react-markdown";
 
 import Swal from "sweetalert2";
 import { TypeAnimation } from "react-type-animation";
-
+import remarkGfm from "remark-gfm";
 import jsPDF from "jspdf";
 import html2canvas from "html2canvas";
 
@@ -41,6 +41,8 @@ function Dashboard() {
   const [improvedResume, setImprovedResume] = useState("");
 
   const [loading, setLoading] = useState(false);
+  const [reportHistory, setReportHistory] = useState([]);
+  const [avgATS, setAvgATS] = useState(0);
 
   const [totalReports, setTotalReports] = useState(0);
 
@@ -184,9 +186,9 @@ function Dashboard() {
     try {
       const res = await api("/dashboard/stats", "GET", null, token);
 
-      setTotalReports(res?.reports || history.length);
+      setTotalReports(res?.reports || reportHistory.length);
     } catch {
-      setTotalReports(history.length);
+      setTotalReports(reportHistory.length);
     }
   };
 
@@ -234,9 +236,9 @@ function Dashboard() {
       salary: data.predicted_salary_lpa,
     };
 
-    const updated = [item, ...history].slice(0, 8);
+    const updated = [item, ...reportHistory].slice(0, 8);
 
-    setHistory(updated);
+    setReportHistory(updated);
 
     localStorage.setItem("careerpilot_history", JSON.stringify(updated));
 
