@@ -55,12 +55,7 @@ def safe_array(arr):
 # ==========================================
 # ASK AI
 # ==========================================
-
 def ask_ai(prompt):
-
-    # ==========================
-    # GEMINI
-    # ==========================
 
     try:
 
@@ -73,20 +68,29 @@ def ask_ai(prompt):
             }
         )
 
-        text = clean_ai_text(
-            response.text
-        )
+        # =========================
+        # SAFE RESPONSE
+        # =========================
 
-        if text:
-            return text
+        if not response:
+            return "AI returned empty response."
+
+        # Gemini safety
+        if not hasattr(response, "text"):
+            return "AI response text missing."
+
+        text = response.text
+
+        if not text:
+            return "AI generated empty analysis."
+
+        return clean_ai_text(text)
 
     except Exception as e:
 
-        print(
-            "Gemini Error:",
-            str(e)
-        )
+        print("Gemini Error:", str(e))
 
+        return f"AI Error: {str(e)}"
     # ==========================
     # GPT FALLBACK
     # ==========================

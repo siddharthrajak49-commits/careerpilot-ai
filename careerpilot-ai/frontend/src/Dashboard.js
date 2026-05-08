@@ -314,6 +314,7 @@ function Dashboard() {
       }
 
       setResult(data);
+      console.log("FULL API RESPONSE:", data);
 
       Swal.fire({
         icon: "success",
