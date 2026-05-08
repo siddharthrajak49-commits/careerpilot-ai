@@ -42,3 +42,5 @@ htmlcov/
 # Uploads
 uploads/
 temp/
+
+.vscode/

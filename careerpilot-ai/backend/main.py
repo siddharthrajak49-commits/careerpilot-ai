@@ -1,3 +1,5 @@
+from unittest import result
+
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -1047,305 +1049,59 @@ def upgrade_plan(
 # ==========================================================
 # RESUME ANALYSIS
 # ==========================================================
+
 @app.post("/analyze")
 async def analyze_resume(
     file: UploadFile = File(...),
     authorization: str = Header(None)
 ):
 
-    email = "guest_user"
+    text = await extract_resume_text(file)
+
+    result = full_resume_analysis(text)
 
     try:
         email = auth_email(authorization)
-    except Exception as e:
-        print("Auth failed:", e)
 
-    text = await extract_resume_text(file)
+        db = SessionLocal()
 
-    # ===============================
-    # ✅ AI CALL + SAFE FALLBACK
-    # ===============================
-    try:
-        data = full_resume_analysis(text)
-        print("RAW AI RESPONSE:")
-        print(data)
-
-        if not isinstance(data, dict):
-            raise Exception("Invalid AI response")
-
-        if "ats_breakdown" not in data or not data["ats_breakdown"]:
-            score = int(data.get("ats_score", 50))
-
-            data["ats_breakdown"] = {
-                "content": int(score * 0.25),
-                "skills": int(score * 0.25),
-                "formatting": int(score * 0.25),
-                "keywords": int(score * 0.25),
-            }
-
-    except Exception as e:
-        data = {
-            "skills_found": [],
-            "missing_skills": [],
-            "recommended_role": "Unknown",
-            "predicted_salary_lpa": 3,
-            "ats_score": 50,
-            "tips": [],
-            "interview_questions": [],
-            "ats_breakdown": {
-                "content": 25,
-                "skills": 25,
-                "formatting": 25,
-                "keywords": 25
-            }
-        }
-
-        # ===============================
-    # CLEAN AI RESPONSE
-    # ===============================
-
-    if not isinstance(data, dict):
-        data = {}
-
-    # ATS SCORE
-    # skills list fix
-
-    if isinstance(data.get("skills_found"), str):
-        data["skills_found"] = [
-            s.strip()
-            for s in data["skills_found"].split(",")
-        ]
-
-    try:
-
-        data["ats_score"] = int(
-            data.get("ats_score", 50)
+        report = Report(
+            email=email,
+            role="AI Analysis",
+            salary=0,
+            ats=0,
+            skills="AI Generated",
+            file_name=file.filename
         )
 
-    except:
-
-        data["ats_score"] = 50
-
-    # SALARY
-
-    try:
-
-        data["predicted_salary_lpa"] = float(
-            data.get(
-                "predicted_salary_lpa",
-                4
-            )
-        )
+        db.add(report)
+        db.commit()
+        db.close()
 
     except:
+        pass
 
-        data["predicted_salary_lpa"] = 4
+    return result
 
-    # SAFE ARRAYS
-
-    for key in [
-
-        "skills_found",
-        "missing_skills",
-        "strengths",
-        "weaknesses",
-        "recommended_skills",
-        "tips",
-        "interview_questions"
-
-    ]:
-
-        if not isinstance(
-            data.get(key),
-            list
-        ):
-
-            # STRING TO ARRAY
-
-            if isinstance(
-                data.get(key),
-                str
-            ):
-
-                data[key] = [
-                    x.strip()
-                    for x in data[key].split(",")
-                    if x.strip()
-                ]
-
-            else:
-
-                data[key] = []
-
-    # SAFE SUMMARY
-
-    if not isinstance(
-        data.get("summary"),
-        str
-    ):
-
-        data["summary"] = ""
-
-    # SAFE ROLE
-
-    if not isinstance(
-        data.get("recommended_role"),
-        str
-    ):
-
-        data["recommended_role"] = "Software Developer"
-
-    # SAFE ATS BREAKDOWN
-
-    if not isinstance(
-        data.get("ats_breakdown"),
-        dict
-    ):
-
-        score = data["ats_score"]
-
-        data["ats_breakdown"] = {
-
-            "content":
-                int(score * 0.25),
-
-            "skills":
-                int(score * 0.25),
-
-            "formatting":
-                int(score * 0.25),
-
-            "keywords":
-                int(score * 0.25)
-
-        }
-
-    # DEFAULTS
     
 
-    data.setdefault(
-        "skills_found",
-        []
-    )
-
-    data.setdefault(
-        "missing_skills",
-        []
-    )
-
-    data.setdefault(
-        "strengths",
-        []
-    )
-
-    data.setdefault(
-        "weaknesses",
-        []
-    )
-
-    data.setdefault(
-        "recommended_skills",
-        []
-    )
-
-    data.setdefault(
-        "tips",
-        []
-    )
-
-    data.setdefault(
-        "interview_questions",
-        []
-    )
-
-    data.setdefault(
-        "summary",
-        ""
-    )
-
-    data.setdefault(
-        "recommended_role",
-        "Software Developer"
-    )
-
-    data.setdefault(
-        "predicted_salary_lpa",
-        4
-    )
-
-    data.setdefault(
-        "ats_score",
-        50
-    )
-    # ===============================
-    # ✅ SAVE TO DB (OUTSIDE TRY)
-    # ===============================
-    db = SessionLocal()
-
-    report = Report(
-        email=email,
-        role=data.get("recommended_role"),
-        salary=float(data.get("predicted_salary_lpa")),
-        ats=int(data.get("ats_score")),
-        skills=", ".join(data.get("skills_found", [])),
-        file_name=file.filename
-    )
-
-    db.add(report)
-    db.commit()
-
-    db_add_notification(email, "Resume analyzed successfully")
-
-    if data.get("ats_score", 0) < 60:
-        db_add_notification(email, "Low ATS score detected", "warning")
-    else:
-        db_add_notification(email, "Strong ATS score generated", "success")
-
-    db.close()
-    print("FINAL ANALYZE RESPONSE:")
-    print(data)
-
-    return data
-
+       
 # ==========================================================
 # AI RESUME IMPROVEMENT
 # ==========================================================
+
 @app.post("/ai/resume-improve")
 async def ai_resume_improve(
     file: UploadFile = File(...)
 ):
 
-    try:
+    text = await extract_resume_text(file)
 
-        text = await extract_resume_text(
-            file
-        )
+    result = improve_resume_ai(text)
 
-        if not text or len(text.strip()) < 30:
+    return result
 
-            raise HTTPException(
-                status_code=400,
-                detail="Resume text extraction failed"
-            )
-
-        result = improve_resume_ai(text)
-
-        if not isinstance(result, dict):
-            result = {}
-
-        return {
-            "result": result
-        }
-
-    except Exception as e:
-
-        print(str(e))
-
-        raise HTTPException(
-            status_code=500,
-            detail=str(e)
-        )
-
+   
 
 # ==========================================================
 # AI INTERVIEW QUESTIONS
@@ -2042,71 +1798,3 @@ def version():
         "version": "7.0.0"
     }
 
-# ==========================================================
-# CHANGE PASSWORD
-# ==========================================================
-
-@app.post("/change-password")
-def change_password(
-    data: ChangePasswordData,
-    authorization: str = Header(None)
-):
-
-    email = auth_email(
-        authorization
-    )
-
-    db = SessionLocal()
-
-    user = db.query(User).filter(
-        User.email == email
-    ).first()
-
-    if not user:
-
-        db.close()
-
-        raise HTTPException(
-            status_code=404,
-            detail="User not found"
-        )
-
-    # OLD PASSWORD CHECK
-
-    if not verify_password(
-        data.old_password,
-        user.password
-    ):
-
-        db.close()
-
-        raise HTTPException(
-            status_code=400,
-            detail="Old password incorrect"
-        )
-
-    # SAME PASSWORD BLOCK
-
-    if data.old_password == data.new_password:
-
-        db.close()
-
-        raise HTTPException(
-            status_code=400,
-            detail="New password must be different"
-        )
-
-    # UPDATE PASSWORD
-
-    user.password = hash_password(
-        data.new_password
-    )
-
-    db.commit()
-
-    db.close()
-
-    return {
-        "message":
-        "Password changed successfully"
-    }

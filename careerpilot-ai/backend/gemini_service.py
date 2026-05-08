@@ -1,8 +1,12 @@
 # gemini_service.py
 
 import os
-import json
+
+from click import prompt
+
 import google.generativeai as genai
+
+import html
 
 # ==========================================
 # OPTIONAL OPENAI FALLBACK
@@ -25,30 +29,29 @@ genai.configure(
 )
 
 model = genai.GenerativeModel(
-    "gemini-1.5-flash"
+    "gemini-1.5-flash-8b"
 )
 
 # ==========================================
 # CLEAN AI RESPONSE
 # ==========================================
-
 def clean_ai_text(text):
 
     if not text:
         return ""
 
-    text = text.replace(
-        "```json",
-        ""
-    )
-
-    text = text.replace(
-        "```",
-        ""
-    )
-
     return text.strip()
 
+# ==========================================
+
+def safe_string(text):
+    return html.escape(text)
+
+def safe_array(arr):
+    return arr if isinstance(arr, list) else []
+
+# ==========================================
+# 
 # ==========================================
 # ASK AI
 # ==========================================
@@ -62,7 +65,12 @@ def ask_ai(prompt):
     try:
 
         response = model.generate_content(
-            prompt
+            prompt,
+            generation_config={
+                "temperature": 0.7,
+                "top_p": 0.9,
+                "max_output_tokens": 8192,
+            }
         )
 
         text = clean_ai_text(
@@ -113,57 +121,10 @@ def ask_ai(prompt):
 
     return ""
 
-# ==========================================
-# SAFE JSON PARSER
-# ==========================================
 
-def parse_json(text, fallback):
 
-    try:
 
-        return json.loads(text)
 
-    except Exception as e:
-
-        print(
-            "JSON Parse Error:",
-            str(e)
-        )
-
-        return fallback
-
-# ==========================================
-# SAFE ARRAY
-# ==========================================
-
-def safe_array(value):
-
-    if isinstance(value, list):
-        return value
-
-    return []
-
-# ==========================================
-# SAFE STRING
-# ==========================================
-
-def safe_string(value):
-
-    if isinstance(value, str):
-        return value.strip()
-
-    return ""
-
-# ==========================================
-# SAFE NUMBER
-# ==========================================
-
-def safe_number(value, default=0):
-
-    try:
-        return int(value)
-    except:
-        return default
 
 # ===============================
 # FULL AI RESUME ANALYSIS
@@ -171,292 +132,293 @@ def safe_number(value, default=0):
 def full_resume_analysis(resume_text):
 
     prompt = f"""
-You are an elite ATS Resume Analyzer,
-Senior HR Recruiter,
-and AI Career Coach.
+You are an Elite AI Resume Reviewer, ATS Optimization Expert, Senior Technical Recruiter, and Hiring Manager with experience hiring candidates across:
 
-Analyze this resume deeply.
+- Google
+- Microsoft
+- Amazon
+- Meta
+- OpenAI
+- NVIDIA
+- AI Startups
+- Fortune 500 Companies
 
-Return ONLY STRICT JSON.
+Your job is to analyze the candidate’s resume like a real recruiter, ATS system, hiring manager, and technical interviewer.
 
-{{
-  "summary": "",
-  "skills_found": [],
-  "missing_skills": [],
-  "strengths": [],
-  "weaknesses": [],
-  "recommended_skills": [],
-  "recommended_role": "",
-  "predicted_salary_lpa": 0,
-  "ats_score": 0,
+The analysis must feel:
+- highly intelligent
+- recruiter-level
+- deeply personalized
+- premium
+- practical
+- concise but insightful
+- realistic
+- modern industry-focused
 
-  "ats_breakdown": {{
-    "content": 0,
-    "skills": 0,
-    "formatting": 0,
-    "keywords": 0
-  }},
+Avoid:
+- generic advice
+- robotic tone
+- repetitive explanations
+- filler content
+- motivational fluff
 
-  "tips": [],
-  "interview_questions": []
-}}
+==================================================
 
-RULES:
-- ATS score realistic
-- salary realistic for India
-- role should match resume
-- strengths meaningful
-- weaknesses meaningful
-- skills technical
-- tips actionable
-- questions role-based
-- output valid JSON ONLY
-- no markdown
-- no explanation
+# OBJECTIVE
 
-Resume:
+Evaluate the resume from:
+- ATS perspective
+- recruiter perspective
+- hiring manager perspective
+- technical interviewer perspective
+- startup hiring perspective
+- MNC hiring perspective
+
+Focus on:
+- technical depth
+- real-world skills
+- engineering maturity
+- project credibility
+- career readiness
+- interview potential
+- hiring confidence
+
+==================================================
+
+# RESPONSE FORMAT
+
+## 1. Executive Summary
+Provide:
+- overall recruiter impression
+- strongest strengths
+- biggest weaknesses
+- professionalism level
+- shortlist potential
+- market competitiveness
+
+Keep this concise but sharp.
+
+--------------------------------------------------
+
+## 2. Resume Scorecard
+Give scores out of 10 for:
+
+- ATS Compatibility
+- Resume Presentation
+- Technical Depth
+- Project Quality
+- AI/ML Readiness
+- Software Engineering Readiness
+- Recruiter Impression
+- Industry Relevance
+- Interview Potential
+
+For each score:
+- explain WHY the score was given
+- mention what increases the score
+- mention what reduces the score
+
+--------------------------------------------------
+
+## 3. Recruiter First Impression
+Explain:
+- what recruiters notice in first 10 seconds
+- what creates strong impression
+- what creates doubt
+- what feels genuine
+- what feels exaggerated
+
+Mention likely recruiter psychology.
+
+--------------------------------------------------
+
+## 4. Technical & Project Analysis
+
+Evaluate:
+- technical stack quality
+- engineering fundamentals
+- AI/ML relevance
+- implementation complexity
+- practical exposure
+- scalability understanding
+- backend/frontend maturity
+
+For EACH major project:
+- what looks impressive
+- what looks weak
+- what recruiters/interviewers may ask
+- what may create doubt
+- how to improve it
+- stronger bullet suggestions
+- stronger ATS wording
+- measurable improvements to add
+
+--------------------------------------------------
+
+## 5. ATS Optimization Analysis
+
+Analyze:
+- keyword optimization
+- ATS readability
+- formatting compatibility
+- section structure
+- keyword density
+- role targeting
+- missing industry keywords
+- missing core CS concepts
+- missing measurable metrics
+
+Suggest:
+- high-impact ATS improvements
+- missing keywords
+- stronger formatting structure
+
+--------------------------------------------------
+
+## 6. Weaknesses & Red Flags
+
+Identify:
+- weak sections
+- recruiter concerns
+- weak technical signals
+- excessive wording
+- generic statements
+- AI-generated sounding language
+- unrealistic claims
+- missing proof of skills
+- lack of measurable achievements
+
+Explain why these reduce hiring confidence.
+
+--------------------------------------------------
+
+## 7. Role Matching
+
+Suggest best-fit roles:
+- AI/ML Intern
+- GenAI Engineer
+- NLP Engineer
+- Data Analyst
+- Python Developer
+- Backend Developer
+- Full Stack Developer
+- Software Engineer
+
+For each role:
+- explain fit level
+- explain strengths
+- explain missing requirements
+
+--------------------------------------------------
+
+## 8. Missing Skills & Missing Signals
+
+Identify missing:
+- technical skills
+- tools/frameworks
+- deployment experience
+- cloud technologies
+- GitHub quality signals
+- portfolio improvements
+- DSA/problem-solving proof
+- engineering fundamentals
+- certifications
+
+Suggest:
+- highest ROI skills to learn
+- best technologies to add
+- strongest portfolio upgrades
+
+--------------------------------------------------
+
+## 9. Resume Improvement Strategy
+
+Create:
+### High Impact Fixes
+(biggest improvements immediately)
+
+### Medium Impact Fixes
+(improve recruiter confidence)
+
+### Long-Term Improvements
+(make profile competitive for top companies)
+
+Focus on:
+- ATS optimization
+- recruiter psychology
+- technical credibility
+- portfolio strength
+- interview conversion
+
+--------------------------------------------------
+
+## 10. Rewrite Weak Resume Bullets
+
+Rewrite weak bullet points using:
+- strong action verbs
+- concise wording
+- measurable impact
+- ATS-friendly language
+- recruiter-focused phrasing
+- technical clarity
+
+Make bullets sound:
+- professional
+- realistic
+- achievement-oriented
+- industry-standard
+
+--------------------------------------------------
+
+## 11. Final Verdict
+
+Give:
+- honest hiring potential
+- startup readiness
+- MNC readiness
+- AI/ML career potential
+- shortlist probability
+- interview potential
+- biggest competitive advantage
+- biggest weakness
+
+End with:
+- a recruiter-style final conclusion
+- and the SINGLE highest-impact improvement recommendation.
+
+==================================================
+
+IMPORTANT RULES
+
+- Think like a real recruiter and hiring manager
+- Prioritize insight over length
+- Be analytical, not generic
+- Avoid repeating advice
+- Use realistic hiring logic
+- Sound human and professional
+- Keep formatting clean and structured
+- Avoid unnecessary long paragraphs
+
+The output should feel like:
+- premium recruiter consultation
+- enterprise-grade ATS analysis
+- AI hiring manager feedback
+- top-tier career strategy session
+
+Return the response in BEAUTIFUL MARKDOWN FORMAT.
+
+DO NOT RETURN JSON.
+
+Resume Content:
 {resume_text}
 """
 
-    res = ask_ai(prompt)
+    response = ask_ai(prompt)
 
-    fallback = {
-        "summary":
-        "Resume analyzed successfully.",
-
-        "skills_found": [],
-
-        "missing_skills": [],
-
-        "strengths": [
-            "Good technical foundation"
-        ],
-
-        "weaknesses": [
-            "Resume needs better ATS keywords"
-        ],
-
-        "recommended_skills": [
-            "Communication",
-            "Problem Solving"
-        ],
-
-        "recommended_role":
-        "Software Developer",
-
-        "predicted_salary_lpa": 4,
-
-        "ats_score": 60,
-
-        "ats_breakdown": {
-            "content": 15,
-            "skills": 15,
-            "formatting": 15,
-            "keywords": 15
-        },
-
-        "tips": [
-            "Improve project descriptions"
-        ],
-
-        "interview_questions": [
-            "Tell me about yourself"
-        ]
+    return {
+        "analysis": response
     }
 
-    data = parse_json(res, fallback)
-
-    # =========================
-    # VALIDATION
-    # =========================
-
-    if not isinstance(data, dict):
-        data = fallback
-
-    # =========================
-    # SAFE DEFAULTS
-    # =========================
-
-    fields = [
-        "skills_found",
-        "missing_skills",
-        "strengths",
-        "weaknesses",
-        "recommended_skills",
-        "tips",
-        "interview_questions"
-    ]
-
-    for field in fields:
-
-        if not isinstance(
-            data.get(field),
-            list
-        ):
-            data[field] = []
-
-    # =========================
-    # ATS SCORE SAFE
-    # =========================
-
-    try:
-        data["ats_score"] = int(
-            data.get(
-                "ats_score",
-                60
-            )
-        )
-    except:
-        data["ats_score"] = 60
-
-    if data["ats_score"] > 100:
-        data["ats_score"] = 100
-
-    if data["ats_score"] < 0:
-        data["ats_score"] = 0
-
-    # =========================
-    # SALARY SAFE
-    # =========================
-
-    try:
-        data["predicted_salary_lpa"] = float(
-            data.get(
-                "predicted_salary_lpa",
-                4
-            )
-        )
-    except:
-        data["predicted_salary_lpa"] = 4
-
-    # =========================
-    # STRINGS SAFE
-    # =========================
-
-    text_fields = [
-        "summary",
-        "recommended_role"
-    ]
-
-    for field in text_fields:
-
-        if not isinstance(
-            data.get(field),
-            str
-        ):
-            data[field] = ""
-
-    # =========================
-    # ATS BREAKDOWN SAFE
-    # =========================
-
-    if not isinstance(
-        data.get("ats_breakdown"),
-        dict
-    ):
-
-        score = data["ats_score"]
-
-        data["ats_breakdown"] = {
-            "content":
-            int(score * 0.25),
-
-            "skills":
-            int(score * 0.25),
-
-            "formatting":
-            int(score * 0.25),
-
-            "keywords":
-            int(score * 0.25)
-        }
-
-    # ==================================
-    # FINAL CLEAN STRUCTURE
-    # ==================================
-
-    cleaned = {
-
-        "summary":
-            safe_string(
-                data.get("summary")
-            ),
-
-        "skills_found":
-            safe_array(
-                data.get("skills_found")
-            ),
-
-        "missing_skills":
-            safe_array(
-                data.get("missing_skills")
-            ),
-
-        "strengths":
-            safe_array(
-                data.get("strengths")
-            ),
-
-        "weaknesses":
-            safe_array(
-                data.get("weaknesses")
-            ),
-
-        "recommended_skills":
-            safe_array(
-                data.get(
-                    "recommended_skills"
-                )
-            ),
-
-        "recommended_role":
-            safe_string(
-                data.get(
-                    "recommended_role"
-                )
-            ) or "Software Developer",
-
-        "predicted_salary_lpa":
-            safe_number(
-                data.get(
-                    "predicted_salary_lpa"
-                ),
-                4
-            ),
-
-        "ats_score":
-            safe_number(
-                data.get(
-                    "ats_score"
-                ),
-                55
-            ),
-
-        "ats_breakdown":
-            data.get(
-                "ats_breakdown",
-                {
-                    "content": 15,
-                    "skills": 15,
-                    "formatting": 10,
-                    "keywords": 15
-                }
-            ),
-
-        "tips":
-            safe_array(
-                data.get("tips")
-            ),
-
-        "interview_questions":
-            safe_array(
-                data.get(
-                    "interview_questions"
-                )
-            )
-    }
-
-    return cleaned
 
 # ===============================
 # REAL RESUME IMPROVEMENT AI
@@ -464,64 +426,62 @@ Resume:
 def improve_resume_ai(resume_text):
 
     prompt = f"""
-You are an expert ATS Resume Writer and Senior Technical Recruiter.
+You are an elite AI Resume Writer, ATS Optimization Expert, and Senior Technical Recruiter.
 
-Analyze the resume deeply.
+Rewrite and improve the candidate’s resume professionally while keeping it realistic, concise, ATS-friendly, and recruiter-focused.
 
-Return STRICT JSON ONLY.
+Improve:
+- grammar
+- clarity
+- formatting
+- ATS optimization
+- keyword relevance
+- technical presentation
+- project descriptions
+- bullet point quality
+- recruiter readability
 
-{{
-  "professional_summary": "",
-  "improved_experience": [],
-  "missing_keywords": [],
-  "recommended_projects": [],
-  "resume_tips": [],
-  "ats_improvement_score": 0
-}}
+Focus on:
+- strong action verbs
+- measurable impact where possible
+- concise professional wording
+- modern industry standards
+- technical credibility
+- clean structure
 
-RULES:
-- Give recruiter-level improvements
-- Make points ATS optimized
-- Add powerful action words
-- Suggest modern AI/Tech keywords
-- Give realistic suggestions
-- No markdown
-- No explanation outside JSON
+Avoid:
+- robotic wording
+- generic corporate buzzwords
+- unrealistic claims
+- overly long bullet points
+- repetitive phrasing
+- fake metrics
+
+Maintain:
+- original meaning
+- realistic experience level
+- accurate technical representation
+
+Optimize the resume for:
+- AI/ML roles
+- Software Engineering roles
+- Data Analyst roles
+- ATS parsing systems
+- recruiter shortlisting
+
+Return the FULL improved resume in BEAUTIFUL MARKDOWN FORMAT.
+
+DO NOT RETURN JSON.
 
 Resume:
 {resume_text}
 """
 
-    res = ask_ai(prompt)
+    response = ask_ai(prompt)
 
-    fallback = {
-        "professional_summary":
-        "Strong candidate with technical and problem solving skills.",
-
-        "improved_experience": [
-            "Improved resume bullet points using action verbs"
-        ],
-
-        "missing_keywords": [
-            "Leadership",
-            "Communication",
-            "Problem Solving"
-        ],
-
-        "recommended_projects": [
-            "AI Resume Analyzer",
-            "Machine Learning Dashboard"
-        ],
-
-        "resume_tips": [
-            "Add measurable achievements",
-            "Improve ATS keywords"
-        ],
-
-        "ats_improvement_score": 75
+    return {
+        "improved_resume": response
     }
-
-    data = parse_json(res, fallback)
 
     # =========================
     # CLEANUP
