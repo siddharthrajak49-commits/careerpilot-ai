@@ -32,7 +32,7 @@ export const api = async (endpoint, method = "GET", data = null, token = null) =
 
     const timeout = setTimeout(() => {
       controller.abort();
-    }, 20000);
+    }, 120000);
 
     // =========================
     // REQUEST
