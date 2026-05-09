@@ -44,3 +44,9 @@ uploads/
 temp/
 
 .vscode/
+.env
+*.env
+backend/.env
+frontend/.env
+node_modules/
+venv/
