@@ -1,22 +1,17 @@
 # gemini_service.py
 
 import os
-
-from click import prompt
-
-import google.generativeai as genai
-
+import json
 import html
 
+from dotenv import load_dotenv
+import google.generativeai as genai
+
 # ==========================================
-# OPTIONAL OPENAI FALLBACK
+# LOAD ENV
 # ==========================================
 
-USE_GPT = False
-
-if USE_GPT:
-    import openai
-    openai.api_key = os.getenv("OPENAI_API_KEY")
+load_dotenv()
 
 # ==========================================
 # GEMINI CONFIG
@@ -28,13 +23,24 @@ genai.configure(
     api_key=GEMINI_API_KEY
 )
 
-model = genai.GenerativeModel(
-    "gemini-1.5-pro"
-)
+# ==========================================
+# OPTIONAL OPENAI FALLBACK
+# ==========================================
+
+USE_GPT = False
+
+if USE_GPT:
+
+    from openai import OpenAI
+
+    client = OpenAI(
+        api_key=os.getenv("OPENAI_API_KEY")
+    )
 
 # ==========================================
-# CLEAN AI RESPONSE
+# HELPERS
 # ==========================================
+
 def clean_ai_text(text):
 
     if not text:
@@ -42,64 +48,99 @@ def clean_ai_text(text):
 
     return text.strip()
 
-# ==========================================
 
 def safe_string(text):
+
+    if not text:
+        return ""
+
     return html.escape(text)
 
+
 def safe_array(arr):
+
     return arr if isinstance(arr, list) else []
 
+
+def parse_json(text, fallback):
+
+    try:
+        return json.loads(text)
+
+    except Exception:
+        return fallback
+
+
 # ==========================================
-# 
+# SMART AI MODEL SYSTEM
+# ==========================================
+
+MODELS = [
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-pro-latest"
+]
+
 # ==========================================
 # ASK AI
 # ==========================================
+
 def ask_ai(prompt):
 
-    try:
+    for model_name in MODELS:
 
-        response = model.generate_content(
-            prompt,
-            generation_config={
-                "temperature": 0.7,
-                "top_p": 0.9,
-                "max_output_tokens": 8192,
-            }
-        )
+        try:
 
-        # =========================
-        # SAFE RESPONSE
-        # =========================
+            print(f"\nUsing Model: {model_name}")
 
-        if not response:
-            return "AI returned empty response."
+            model = genai.GenerativeModel(
+                model_name
+            )
 
-        # Gemini safety
-        if not hasattr(response, "text"):
-            return "AI response text missing."
+            response = model.generate_content(
+                prompt,
+                generation_config={
+                    "temperature": 0.7,
+                    "top_p": 0.9,
+                    "max_output_tokens": 8192,
+                }
+            )
 
-        text = response.text
+            # =========================
+            # SAFE RESPONSE
+            # =========================
 
-        if not text:
-            return "AI generated empty analysis."
+            if not response:
+                continue
 
-        return clean_ai_text(text)
+            if not hasattr(response, "text"):
+                continue
 
-    except Exception as e:
+            text = response.text
 
-        print("Gemini Error:", str(e))
+            if not text:
+                continue
 
-        return f"AI Error: {str(e)}"
-    # ==========================
-    # GPT FALLBACK
-    # ==========================
+            return clean_ai_text(text)
+
+        except Exception as e:
+
+            print(
+                f"{model_name} failed:",
+                str(e)
+            )
+
+            continue
+
+    # ======================================
+    # OPTIONAL GPT FALLBACK
+    # ======================================
 
     if USE_GPT:
 
         try:
 
-            res = openai.ChatCompletion.create(
+            res = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
                     {
@@ -123,297 +164,56 @@ def ask_ai(prompt):
                 str(e)
             )
 
-    return ""
+    return "AI service temporarily unavailable."
 
 
-
-
-
-
-# ===============================
+# ==========================================
 # FULL AI RESUME ANALYSIS
-# ===============================
+# ==========================================
+
 def full_resume_analysis(resume_text):
 
     prompt = f"""
-You are an Elite AI Resume Reviewer, ATS Optimization Expert, Senior Technical Recruiter, and Hiring Manager with experience hiring candidates across:
+You are an Elite AI Resume Reviewer,
+ATS Optimization Expert,
+Senior Technical Recruiter,
+and Hiring Manager.
 
-- Google
-- Microsoft
-- Amazon
-- Meta
-- OpenAI
-- NVIDIA
-- AI Startups
-- Fortune 500 Companies
+Analyze this resume deeply.
 
-Your job is to analyze the candidate’s resume like a real recruiter, ATS system, hiring manager, and technical interviewer.
-
-The analysis must feel:
-- highly intelligent
-- recruiter-level
-- deeply personalized
-- premium
-- practical
-- concise but insightful
-- realistic
-- modern industry-focused
-
-Avoid:
-- generic advice
-- robotic tone
-- repetitive explanations
-- filler content
-- motivational fluff
-
-==================================================
-
-# OBJECTIVE
-
-Evaluate the resume from:
-- ATS perspective
-- recruiter perspective
-- hiring manager perspective
-- technical interviewer perspective
-- startup hiring perspective
-- MNC hiring perspective
-
-Focus on:
-- technical depth
-- real-world skills
-- engineering maturity
-- project credibility
-- career readiness
-- interview potential
-- hiring confidence
-
-==================================================
-
-# RESPONSE FORMAT
-
-## 1. Executive Summary
 Provide:
-- overall recruiter impression
-- strongest strengths
-- biggest weaknesses
-- professionalism level
-- shortlist potential
-- market competitiveness
 
-Keep this concise but sharp.
+1. Executive Summary
 
---------------------------------------------------
-
-## 2. Resume Scorecard
-Give scores out of 10 for:
-
+2. Resume Scorecard
 - ATS Compatibility
-- Resume Presentation
 - Technical Depth
 - Project Quality
-- AI/ML Readiness
-- Software Engineering Readiness
 - Recruiter Impression
-- Industry Relevance
+- AI/ML Readiness
 - Interview Potential
 
-For each score:
-- explain WHY the score was given
-- mention what increases the score
-- mention what reduces the score
+3. Recruiter First Impression
 
---------------------------------------------------
+4. Technical & Project Analysis
 
-## 3. Recruiter First Impression
-Explain:
-- what recruiters notice in first 10 seconds
-- what creates strong impression
-- what creates doubt
-- what feels genuine
-- what feels exaggerated
+5. ATS Optimization Suggestions
 
-Mention likely recruiter psychology.
+6. Weaknesses & Red Flags
 
---------------------------------------------------
+7. Best Role Matching
 
-## 4. Technical & Project Analysis
+8. Missing Skills
 
-Evaluate:
-- technical stack quality
-- engineering fundamentals
-- AI/ML relevance
-- implementation complexity
-- practical exposure
-- scalability understanding
-- backend/frontend maturity
+9. Resume Improvement Strategy
 
-For EACH major project:
-- what looks impressive
-- what looks weak
-- what recruiters/interviewers may ask
-- what may create doubt
-- how to improve it
-- stronger bullet suggestions
-- stronger ATS wording
-- measurable improvements to add
+10. Rewrite Weak Resume Bullets
 
---------------------------------------------------
+11. Final Verdict
 
-## 5. ATS Optimization Analysis
+Return BEAUTIFUL MARKDOWN.
 
-Analyze:
-- keyword optimization
-- ATS readability
-- formatting compatibility
-- section structure
-- keyword density
-- role targeting
-- missing industry keywords
-- missing core CS concepts
-- missing measurable metrics
-
-Suggest:
-- high-impact ATS improvements
-- missing keywords
-- stronger formatting structure
-
---------------------------------------------------
-
-## 6. Weaknesses & Red Flags
-
-Identify:
-- weak sections
-- recruiter concerns
-- weak technical signals
-- excessive wording
-- generic statements
-- AI-generated sounding language
-- unrealistic claims
-- missing proof of skills
-- lack of measurable achievements
-
-Explain why these reduce hiring confidence.
-
---------------------------------------------------
-
-## 7. Role Matching
-
-Suggest best-fit roles:
-- AI/ML Intern
-- GenAI Engineer
-- NLP Engineer
-- Data Analyst
-- Python Developer
-- Backend Developer
-- Full Stack Developer
-- Software Engineer
-
-For each role:
-- explain fit level
-- explain strengths
-- explain missing requirements
-
---------------------------------------------------
-
-## 8. Missing Skills & Missing Signals
-
-Identify missing:
-- technical skills
-- tools/frameworks
-- deployment experience
-- cloud technologies
-- GitHub quality signals
-- portfolio improvements
-- DSA/problem-solving proof
-- engineering fundamentals
-- certifications
-
-Suggest:
-- highest ROI skills to learn
-- best technologies to add
-- strongest portfolio upgrades
-
---------------------------------------------------
-
-## 9. Resume Improvement Strategy
-
-Create:
-### High Impact Fixes
-(biggest improvements immediately)
-
-### Medium Impact Fixes
-(improve recruiter confidence)
-
-### Long-Term Improvements
-(make profile competitive for top companies)
-
-Focus on:
-- ATS optimization
-- recruiter psychology
-- technical credibility
-- portfolio strength
-- interview conversion
-
---------------------------------------------------
-
-## 10. Rewrite Weak Resume Bullets
-
-Rewrite weak bullet points using:
-- strong action verbs
-- concise wording
-- measurable impact
-- ATS-friendly language
-- recruiter-focused phrasing
-- technical clarity
-
-Make bullets sound:
-- professional
-- realistic
-- achievement-oriented
-- industry-standard
-
---------------------------------------------------
-
-## 11. Final Verdict
-
-Give:
-- honest hiring potential
-- startup readiness
-- MNC readiness
-- AI/ML career potential
-- shortlist probability
-- interview potential
-- biggest competitive advantage
-- biggest weakness
-
-End with:
-- a recruiter-style final conclusion
-- and the SINGLE highest-impact improvement recommendation.
-
-==================================================
-
-IMPORTANT RULES
-
-- Think like a real recruiter and hiring manager
-- Prioritize insight over length
-- Be analytical, not generic
-- Avoid repeating advice
-- Use realistic hiring logic
-- Sound human and professional
-- Keep formatting clean and structured
-- Avoid unnecessary long paragraphs
-
-The output should feel like:
-- premium recruiter consultation
-- enterprise-grade ATS analysis
-- AI hiring manager feedback
-- top-tier career strategy session
-
-Return the response in BEAUTIFUL MARKDOWN FORMAT.
-
-DO NOT RETURN JSON.
-
-Resume Content:
+Resume:
 {resume_text}
 """
 
@@ -424,58 +224,34 @@ Resume Content:
     }
 
 
-# ===============================
-# REAL RESUME IMPROVEMENT AI
-# ===============================
+# ==========================================
+# IMPROVE RESUME AI
+# ==========================================
+
 def improve_resume_ai(resume_text):
 
     prompt = f"""
-You are an elite AI Resume Writer, ATS Optimization Expert, and Senior Technical Recruiter.
+You are an elite Resume Writer
+and ATS Expert.
 
-Rewrite and improve the candidate’s resume professionally while keeping it realistic, concise, ATS-friendly, and recruiter-focused.
+Rewrite and improve this resume professionally.
 
 Improve:
 - grammar
-- clarity
-- formatting
 - ATS optimization
-- keyword relevance
-- technical presentation
 - project descriptions
-- bullet point quality
-- recruiter readability
+- keyword optimization
+- formatting
+- technical presentation
 
-Focus on:
-- strong action verbs
-- measurable impact where possible
-- concise professional wording
-- modern industry standards
-- technical credibility
-- clean structure
+Make it:
+- modern
+- recruiter friendly
+- concise
+- achievement-oriented
 
-Avoid:
-- robotic wording
-- generic corporate buzzwords
-- unrealistic claims
-- overly long bullet points
-- repetitive phrasing
-- fake metrics
-
-Maintain:
-- original meaning
-- realistic experience level
-- accurate technical representation
-
-Optimize the resume for:
-- AI/ML roles
-- Software Engineering roles
-- Data Analyst roles
-- ATS parsing systems
-- recruiter shortlisting
-
-Return the FULL improved resume in BEAUTIFUL MARKDOWN FORMAT.
-
-DO NOT RETURN JSON.
+Return FULL improved resume
+in BEAUTIFUL MARKDOWN.
 
 Resume:
 {resume_text}
@@ -487,56 +263,16 @@ Resume:
         "improved_resume": response
     }
 
-    # =========================
-    # CLEANUP
-    # =========================
-
-    if not isinstance(data, dict):
-        data = fallback
-
-    data.setdefault(
-        "professional_summary",
-        fallback["professional_summary"]
-    )
-
-    data.setdefault(
-        "improved_experience",
-        []
-    )
-
-    data.setdefault(
-        "missing_keywords",
-        []
-    )
-
-    data.setdefault(
-        "recommended_projects",
-        []
-    )
-
-    data.setdefault(
-        "resume_tips",
-        []
-    )
-
-    data.setdefault(
-        "ats_improvement_score",
-        75
-    )
-
-    return data
 
 # ==========================================
 # JOB RECOMMENDATION AI
 # ==========================================
 
-def job_recommendation_ai(
-    skills
-):
+def job_recommendation_ai(skills):
 
     prompt = f"""
-Suggest 5 job roles
-based on these skills:
+Suggest 5 best tech jobs
+for these skills:
 
 {skills}
 
@@ -558,6 +294,7 @@ Return STRICT JSON:
         data.get("jobs")
     )
 
+
 # ==========================================
 # CAREER CHAT AI
 # ==========================================
@@ -573,29 +310,28 @@ You are CareerPilot AI.
 Context:
 {context}
 
-User:
+User Message:
 {user_message}
 
 Give concise,
-helpful answer.
+helpful,
+professional answer.
 """
 
     response = ask_ai(prompt)
 
     return safe_string(response)
 
+
 # ==========================================
 # INTERVIEW QUESTIONS AI
 # ==========================================
 
-def interview_questions_ai(
-    role
-):
+def interview_questions_ai(role):
 
     prompt = f"""
-Generate 5 interview
-questions and answers
-for:
+Generate 5 interview questions
+and answers for:
 
 {role}
 
